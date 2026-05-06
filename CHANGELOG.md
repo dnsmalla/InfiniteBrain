@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0] — 2026-05-07
+
+App packaging — InfiniteBrain.app and a distributable .dmg can now be
+produced from the repo with one command.
+
+- `bin/build_app.sh` builds the SwiftPM release product, lays out a proper
+  `.app` bundle (Contents/{MacOS, Resources, Info.plist, PkgInfo}), copies
+  the `InfiniteBrain_InfiniteBrainCore.bundle` resource bundle alongside the
+  binary, code-signs with an ad-hoc identity by default, and copies the
+  `infb` CLI alongside.
+- `--dmg` flag wraps the `.app` in a UDZO-compressed disk image via
+  `hdiutil`.
+- `--sign IDENTITY` passes through to `codesign` for a real Developer ID.
+- Output goes to `.build/dist/` (already gitignored).
+- Removed empty placeholder folders (`Resources/Assets.xcassets`,
+  `Resources/prompts`) that were tripping a SwiftPM "unhandled file"
+  warning.
+
 ## [0.6.0] — 2026-05-07
 
 Concurrency + crash recovery — long-book ingest is now both faster and

@@ -227,11 +227,15 @@ The same is true for the cross-cutting rules in `<vault>/.infinitebrain/rules/`:
 ## Build a `.app` and `.dmg`
 
 ```bash
-./bin/build_app.sh    # produces InfiniteBrain.app
+./bin/build_app.sh           # produces .build/dist/InfiniteBrain.app + infb
+./bin/build_app.sh --dmg     # also produces .build/dist/InfiniteBrain-x.y.z.dmg
+./bin/build_app.sh --sign "Developer ID Application: Your Name (TEAMID)"
 ```
 
-(Code-signing and dmg packaging are stubbed in `bin/build_app.sh` — finish
-those before distributing.)
+By default the app is signed ad-hoc (`-`), which is fine for local use.
+Pass `--sign IDENTITY` to use a real signing identity from your Keychain.
+Notarisation isn't wired up yet — for distribution you'd staple after
+running `xcrun notarytool submit`.
 
 ---
 
