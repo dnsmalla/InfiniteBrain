@@ -1,0 +1,43 @@
+---
+name: output-format
+description: Canonical YAML frontmatter and edge syntax for every note file.
+---
+
+# Note file layout
+
+```markdown
+---
+id: 01J...                 # ULID
+type: decision             # one of the 16
+title: No free tier for Indie plan
+summary: We will not offer a free tier on the Indie plan because Stripe-fee economics break below $9 ARPU.
+created_at: 2026-05-06T10:23:00Z
+updated_at: 2026-05-06T10:23:00Z
+version: 1
+content_hash: sha256-…
+sources: [01J...src...]
+edges:
+  - type: supports
+    target: 01J...factA
+    evidence: "Stripe fee table shows $0.30 floor"
+  - type: contradicts
+    target: 01J...hypB
+    evidence: "Earlier hypothesis assumed flat 2.9% fees"
+superseded_by: null
+changelog:
+  - v1: initial extraction from <source_id>
+---
+
+# {title}
+
+{body — 50–300 lines of markdown}
+```
+
+# Rules
+
+1. Frontmatter is YAML 1.2; never use tabs.
+2. `id` is a 26-char ULID; never reuse.
+3. Edge `target` must point to an `id` that exists in the vault at write
+   time. Orphan edges are a write-time error.
+4. Filenames are `<type>/<id>--<slugified-title>.md`. Renames must keep the
+   id segment.

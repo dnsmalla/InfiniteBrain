@@ -1,0 +1,30 @@
+---
+name: orchestration-policy
+description: How the Orchestrator sequences skills, checkpoints progress, and resumes after crashes.
+---
+
+# Pipeline (per file)
+
+```
+extract-pdf → atomize-text → for each unit:
+  classify-node → summarize-note → reconcile-note
+    case skip:    no write; record decision in index
+    case improve: improve-note → VaultStore.update(target_id)
+    case add:     VaultStore.write(new note) → infer-edges → VaultStore.patchEdges
+```
+
+# Checkpointing
+
+After every successful stage, the orchestrator writes a row to
+`.infinitebrain/index.db` table `ingest_checkpoint` with
+`(file_id, unit_index, stage, status, ts)`. On crash + resume, the
+orchestrator reads the latest checkpoint and continues from the next
+stage. No stage is run twice for the same `(file_id, unit_index)`.
+
+# Concurrency
+
+- One file at a time (PDF order matters for `preceded_by` / `followed_by`
+  edges).
+- Within a file, units after `atomize-text` are processed concurrently up
+  to 4 at once. `infer-edges` is serial because each edge write changes
+  the candidate set for the next unit.

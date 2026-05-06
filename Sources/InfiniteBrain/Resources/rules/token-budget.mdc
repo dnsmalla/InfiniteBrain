@@ -1,0 +1,20 @@
+---
+name: token-budget
+description: Hard caps per pipeline stage to keep ingest cost predictable.
+---
+
+| Stage           | Input cap | Output cap |
+|-----------------|-----------|------------|
+| extract-pdf     | 30k       | 30k        |
+| atomize-text    | 30k       | 30k        |
+| classify-node   | 1.5k      | 100        |
+| summarize-note  | 1.5k      | 80         |
+| infer-edges     | 4k        | 800        |
+| reconcile-note  | 4k        | 200        |
+| improve-note    | 4k        | 4k         |
+| query-brain p1  | 4k        | 200        |
+| query-brain p2  | 12k       | 1.5k       |
+
+The orchestrator truncates inputs that exceed the cap and logs a
+`budget-truncated` warning. Skills must produce useful output even on
+truncated input.

@@ -1,0 +1,12 @@
+---
+name: citation-policy
+description: Every Fact, Decision, and Event must cite a Source.
+---
+
+# Rule
+
+A note of type `fact`, `decision`, or `event` MUST include at least one
+entry in its `sources:` frontmatter list. The orchestrator rejects writes
+that violate this. If a candidate atomic unit cannot be tied to a source,
+the classifier should down-rank `fact`/`decision`/`event` and prefer
+`note` or `hypothesis`.

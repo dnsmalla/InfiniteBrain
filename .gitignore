@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.app
+*.dmg
+.env
+.env.local
+*.log
+.serena/
+.claude/

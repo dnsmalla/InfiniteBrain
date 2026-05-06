@@ -1,0 +1,18 @@
+---
+name: quality-bar
+description: Global rejection criteria. The orchestrator enforces these after every skill call.
+---
+
+A skill output is rejected and retried (once) when ANY of:
+
+1. JSON does not parse.
+2. Output fails the declared output schema.
+3. `confidence` field present and < 0.5 → reroute to `custom` and tag
+   `needs-review: true` in the note frontmatter; do not retry.
+4. Free-form text contains hedging boilerplate — `"as an AI"`,
+   `"I cannot"`, `"this note discusses"` — these are linted out.
+5. A `summary` exceeds 50 tokens or is multi-sentence.
+6. An `edges[]` entry lacks `evidence`.
+
+After one retry, surviving failures are written to
+`.infinitebrain/quarantine/` for human inspection rather than dropped.
