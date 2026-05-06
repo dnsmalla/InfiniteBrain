@@ -16,22 +16,32 @@ public struct IngestResult: Equatable, Sendable {
     }
 }
 
-/// Sequences pipeline stages per ingested file. End-to-end happy path:
-///   read → atomize → (per unit) classify → summarize → reconcile → write/skip/improve.
-/// Edge inference is omitted from v1 — wired in once embeddings land.
+/// Sequences pipeline stages per ingested file. End-to-end:
+///   read → atomize → (per unit) embed → classify → summarize → reconcile
+///   → write/skip/improve. Embedding-backed candidates flow into reconcile so
+///   duplicates can actually be detected.
 public actor Orchestrator {
     public let skillRunner: SkillRunner
     public let idGenerator: IDGenerator
     public let dateProvider: DateProvider
+    public let embeddings: EmbeddingProvider?
+    public let index: EmbeddingIndex?
+    public let candidateK: Int
 
     public init(
         skillRunner: SkillRunner,
         idGenerator: IDGenerator = ULIDGenerator(),
-        dateProvider: DateProvider = SystemDateProvider()
+        dateProvider: DateProvider = SystemDateProvider(),
+        embeddings: EmbeddingProvider? = nil,
+        index: EmbeddingIndex? = nil,
+        candidateK: Int = 5
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
         self.dateProvider = dateProvider
+        self.embeddings = embeddings
+        self.index = index
+        self.candidateK = candidateK
     }
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
@@ -63,11 +73,34 @@ public actor Orchestrator {
             )
             let summary = (summarized["summary"] as? String) ?? ""
 
+            // Embed and look up nearest existing notes so reconcile can see real
+            // candidates. If embeddings are unavailable, the candidate list is
+            // empty and reconcile defaults to `add`.
+            var unitVector: [Float]? = nil
+            var nearest: [[String: Any]] = []
+            if let embeddings, let index {
+                unitVector = try await embeddings.embed(body)
+                if let v = unitVector {
+                    let hits = await index.nearest(to: v, k: candidateK)
+                    for hit in hits {
+                        if let neighbor = try? await store.read(id: hit.id) {
+                            nearest.append([
+                                "id": neighbor.id,
+                                "type": neighbor.type.rawValue,
+                                "title": neighbor.title,
+                                "summary": neighbor.summary,
+                                "score": Double(hit.score),
+                            ])
+                        }
+                    }
+                }
+            }
+
             let reconciled = try await skillRunner.run(
                 "reconcile-note",
                 input: [
                     "candidate": ["title": title, "body": body, "suggested_type": typeRaw],
-                    "nearest": [],   // empty until embeddings land
+                    "nearest": nearest,
                 ]
             )
             let decision = (reconciled["decision"] as? String) ?? "add"
@@ -117,10 +150,14 @@ public actor Orchestrator {
                     supersededBy: nil
                 )
                 try await store.write(note)
+                if let index, let unitVector {
+                    await index.record(id: note.id, vector: unitVector)
+                }
                 result.added += 1
             }
         }
 
+        if let index { try? await index.flush() }
         return result
     }
 
