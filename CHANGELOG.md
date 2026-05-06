@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.6.0] — 2026-05-07
+
+Concurrency + crash recovery — long-book ingest is now both faster and
+durable.
+
+Per-unit concurrency
+- New `concurrency` parameter on `Orchestrator` (default 4) runs the
+  per-unit decision pipeline (classify, summarize, embed, reconcile,
+  infer-edges/improve-note) in parallel via a sliding TaskGroup.
+- Phase B writes outcomes serially in input order so the vault and the
+  embedding index stay consistent. Cuts a 100-unit ingest from ~12 minutes
+  to roughly a quarter of that on the API path.
+- IDs are reserved up-front in input order so parallel tasks can't race on
+  the id generator.
+
+Checkpoint-based resume
+- New `CheckpointStore` writes a per-file JSON checkpoint to
+  `<vault>/.infinitebrain/checkpoints/sha256-<hash>.json` after every
+  successful unit apply.
+- The checkpoint records the source-note id, the atomized units, the
+  reserved ids, and the index of the next unit to apply.
+- On the next ingest of the same content, the orchestrator finds the
+  checkpoint and skips: the source-note write, the atomize-text calls
+  (the expensive part), and any units already applied. It picks up at
+  the next pending unit with stable ids.
+- Once every unit is applied the checkpoint file is deleted; rerunning
+  ingest on a finished file is a no-op (well-typed).
+
+Tests
+- New `CheckpointStoreTests` and `CheckpointResumeTests` cover the
+  round-trip and the resume path (verified by ingesting with no
+  `atomize-text` route — proves the call was skipped).
+- 48 tests green (28 InfiniteBrain, 20 SharedLLMKit).
+
 ## [0.5.0] — 2026-05-07
 
 CLI: `infb` executable provides the same ingest + query pipeline from the

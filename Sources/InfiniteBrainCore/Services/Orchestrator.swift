@@ -72,61 +72,98 @@ public actor Orchestrator {
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
         let store = VaultStore(vault: vault)
+        let checkpoints = CheckpointStore(vault: vault)
         let text = try Self.readText(from: file)
+        let fileHash = Self.hash(text)
 
-        // Emit a `source` note for the file so every produced note can cite it.
-        let now = dateProvider.now()
-        let sourceNote = Note(
-            id: idGenerator.next(),
-            type: .source,
-            title: file.lastPathComponent,
-            summary: "Original source: \(file.lastPathComponent).",
-            body: "Path: \(file.path)",
-            edges: [],
-            sources: [],
-            contentHash: Self.hash(text),
-            version: 1,
-            createdAt: now,
-            updatedAt: now
-        )
-        try await store.write(sourceNote)
-        if let embeddings, let index, let v = try? await embeddings.embed(text) {
-            await index.record(id: sourceNote.id, vector: v)
-        }
+        // Resume if a checkpoint exists for this file content; otherwise start fresh.
+        let checkpoint: Checkpoint
+        let sourceNoteId: String
+        let units: [[String: Any]]
+        let reservedIds: [String]
 
-        // Chunk the input so long documents (books, multi-chapter PDFs) don't
-        // blow Claude's context window or silently truncate against
-        // max_tokens. Each chunk is atomised separately and the resulting
-        // units are flattened.
-        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
-        var units: [[String: Any]] = []
-        for (idx, chunk) in chunks.enumerated() {
-            let atomized = try await skillRunner.run(
-                "atomize-text",
-                input: [
-                    "text": chunk,
-                    "source_id": sourceNote.id,
-                    "chunk_index": idx,
-                    "chunk_total": chunks.count,
-                ]
+        if let existing = try? await checkpoints.load(fileHash: fileHash) {
+            checkpoint = existing
+            sourceNoteId = existing.sourceId
+            units = existing.units.map { u in
+                ["title": u.title, "body": u.body]
+            }
+            reservedIds = existing.reservedIds
+        } else {
+            // Fresh ingest: write source note, atomise, save initial checkpoint.
+            let now = dateProvider.now()
+            let sourceNote = Note(
+                id: idGenerator.next(),
+                type: .source,
+                title: file.lastPathComponent,
+                summary: "Original source: \(file.lastPathComponent).",
+                body: "Path: \(file.path)",
+                edges: [],
+                sources: [],
+                contentHash: fileHash,
+                version: 1,
+                createdAt: now,
+                updatedAt: now
             )
-            let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
-            units.append(contentsOf: chunkUnits)
+            try await store.write(sourceNote)
+            if let embeddings, let index, let v = try? await embeddings.embed(text) {
+                await index.record(id: sourceNote.id, vector: v)
+            }
+            sourceNoteId = sourceNote.id
+
+            let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+            var collected: [[String: Any]] = []
+            for (idx, chunk) in chunks.enumerated() {
+                let atomized = try await skillRunner.run(
+                    "atomize-text",
+                    input: [
+                        "text": chunk,
+                        "source_id": sourceNote.id,
+                        "chunk_index": idx,
+                        "chunk_total": chunks.count,
+                    ]
+                )
+                let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
+                collected.append(contentsOf: chunkUnits)
+            }
+            units = collected
+            reservedIds = (0..<units.count).map { _ in idGenerator.next() }
+
+            checkpoint = Checkpoint(
+                fileHash: fileHash,
+                sourceId: sourceNote.id,
+                units: units.map { u in
+                    Checkpoint.Unit(
+                        title: (u["title"] as? String) ?? "",
+                        body: (u["body"] as? String) ?? "",
+                        lineCount: u["line_count"] as? Int,
+                        suggestedTypeHint: u["suggested_type_hint"] as? String
+                    )
+                },
+                reservedIds: reservedIds,
+                completedThrough: 0
+            )
+            try await checkpoints.save(checkpoint)
         }
 
-        // PHASE A — decide each unit's outcome with bounded parallelism.
-        // No vault writes here — the decision phase only reads.
+        let startFrom = checkpoint.completedThrough
+        let pendingUnits = Array(units[startFrom...])
+        let pendingIds = Array(reservedIds[startFrom...])
+
+        // PHASE A — decide outcomes for pending units in parallel.
         let outcomes = try await decideOutcomes(
-            units: units,
-            sourceId: sourceNote.id,
+            units: pendingUnits,
+            reservedIds: pendingIds,
+            sourceId: sourceNoteId,
             sourceLabel: file.lastPathComponent,
             store: store
         )
 
-        // PHASE B — apply outcomes serially so the vault and index stay
-        // consistent and ordering is deterministic.
+        // PHASE B — apply outcomes serially. Persist progress after each so a
+        // crash mid-batch resumes exactly from the next pending unit.
         var result = IngestResult()
-        for outcome in outcomes {
+        var working = checkpoint
+        for (offset, outcome) in outcomes.enumerated() {
             switch outcome {
             case .skip:
                 result.skipped += 1
@@ -142,8 +179,12 @@ public actor Orchestrator {
                 }
                 result.added += 1
             }
+            working.completedThrough = startFrom + offset + 1
+            try await checkpoints.save(working)
         }
 
+        // All units done — drop the checkpoint and flush the index.
+        try await checkpoints.delete(fileHash: fileHash)
         if let index {
             do { try await index.flush() }
             catch { /* index is rebuildable from the markdown; surfaced via caller */ }
@@ -157,16 +198,13 @@ public actor Orchestrator {
     /// preserving the original unit order in the returned outcomes array.
     private func decideOutcomes(
         units: [[String: Any]],
+        reservedIds: [String],
         sourceId: String,
         sourceLabel: String,
         store: VaultStore
     ) async throws -> [UnitOutcome] {
         guard !units.isEmpty else { return [] }
-
-        // Reserve a stable id per unit up-front so parallel tasks get them in
-        // input order. The id flows into infer-edges (so the new note can be
-        // referenced) and ultimately into the written file.
-        let reservedIds: [String] = (0..<units.count).map { _ in idGenerator.next() }
+        precondition(reservedIds.count == units.count, "must reserve one id per unit")
 
         var outcomes: [(Int, UnitOutcome)] = []
         outcomes.reserveCapacity(units.count)
