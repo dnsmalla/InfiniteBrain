@@ -61,6 +61,7 @@ actor DispatchingFakeClient: LLMClient {
         case "improve-note":    return "Produce an improved version"
         case "infer-edges":     return "You connect a new note"
         case "answer-question": return "Answer the user's `question`"
+        case "select-notes-for-question": return "pass 1 of a two-pass retrieval pipeline"
         default: return name
         }
     }

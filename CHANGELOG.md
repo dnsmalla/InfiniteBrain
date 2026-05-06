@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.9.0] — 2026-05-07
+
+Two-pass query — saves tokens on every question by sending summaries first
+and only expanding the bodies the model says it actually needs.
+
+- New `select-notes-for-question` skill (Haiku-class — cheap pass 1) takes
+  a question + candidate summaries + budget and returns the ids whose
+  full bodies should be loaded for pass 2.
+- `QueryService` is now two-pass by default. Pass 1 sends top-K summaries
+  (default candidateK=12), pass 2 sends only the picked-id full bodies
+  (default fullNotesBudget=4) to `answer-question`.
+- Single-pass mode still available via `twoPass: false` for callers that
+  prefer the older one-shot approach (eats more tokens per question).
+- `topK` parameter on `ask(_:topK:)` is now honored only in single-pass.
+
+Tests
+- New QueryTwoPassTests proves: pass 1 sees summaries but never full
+  bodies; pass 2 receives only the bodies named by pass 1's `needed_ids`;
+  single-pass mode skips the selection skill entirely.
+- The old QueryServiceTests was made redundant by the above and removed.
+- 52 tests green (32 InfiniteBrain, 20 SharedLLMKit).
+
 ## [0.8.0] — 2026-05-07
 
 Graph view — see the knowledge graph the app has been building, not just
