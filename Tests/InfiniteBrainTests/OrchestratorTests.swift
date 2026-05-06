@@ -4,7 +4,7 @@ import XCTest
 
 final class OrchestratorTests: XCTestCase {
     func testIngestsTextFileAndWritesNotes() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
         // Drop a text file in the inbox.
@@ -13,7 +13,7 @@ final class OrchestratorTests: XCTestCase {
         try "We decided to drop the free tier on the Indie plan.".write(to: input, atomically: true, encoding: .utf8)
 
         // Skills root mirrors the bundled layout.
-        let skillsRoot = Self.bundledSkillsRoot
+        let skillsRoot = TestPaths.bundledSkills
 
         let fake = DispatchingFakeClient(routes: [
             "atomize-text":    #"{"units":[{"title":"No free tier","body":"We decided to drop the free tier on the Indie plan.","line_count":52,"suggested_type_hint":"decision"}]}"#,
@@ -47,7 +47,7 @@ final class OrchestratorTests: XCTestCase {
     }
 
     func testReconcilerSkipDecisionDoesNotWriteNote() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
         let input = vault.inbox.appendingPathComponent("memo.txt")
         try FileManager.default.createDirectory(at: vault.inbox, withIntermediateDirectories: true)
@@ -61,7 +61,7 @@ final class OrchestratorTests: XCTestCase {
         ])
 
         let orchestrator = Orchestrator(
-            skillRunner: SkillRunner(client: fake, skillsRoot: Self.bundledSkillsRoot),
+            skillRunner: SkillRunner(client: fake, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JNEW000000000000000099"]),
             dateProvider: FixedDateProvider(date: Date())
         )
@@ -80,70 +80,4 @@ final class OrchestratorTests: XCTestCase {
         XCTAssertEqual(sourceFiles.count, 1, "source note must be written even when atomic units are skipped")
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-
-    private static var bundledSkillsRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent()  // InfiniteBrainTests/
-        url.deleteLastPathComponent()  // Tests/
-        url.deleteLastPathComponent()  // repo root
-        return url.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
-    }
-}
-
-// MARK: - Fakes
-
-actor DispatchingFakeClient: LLMClient {
-    private let routes: [String: String]
-    init(routes: [String: String]) { self.routes = routes }
-
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
-        for (key, value) in routes {
-            if system.range(of: matchToken(forSkill: key)) != nil {
-                return value
-            }
-        }
-        throw NSError(domain: "DispatchingFakeClient", code: 1,
-                      userInfo: [NSLocalizedDescriptionKey: "no route matched system prompt"])
-    }
-
-    /// A unique substring guaranteed to appear in each skill's bundled body.
-    private func matchToken(forSkill name: String) -> String {
-        switch name {
-        case "atomize-text":   return "convert long-form text into atomic units"
-        case "classify-node":  return "Pick exactly one type"
-        case "summarize-note": return "Write a single English sentence"
-        case "reconcile-note": return "Compare the candidate against"
-        case "improve-note":   return "Produce an improved version"
-        case "infer-edges":    return "You connect a new note"
-        case "extract-pdf":    return "Take per-page raw text"
-        case "query-brain":    return "Two-pass retrieval"
-        case "answer-question":return "Answer the user's `question`"
-        default: return name
-        }
-    }
-}
-
-struct FixedIDGenerator: IDGenerator {
-    let ids: [String]
-    private let counter = Counter()
-    func next() -> String {
-        let i = counter.bump()
-        return i < ids.count ? ids[i] : "01J\(String(format: "%023d", i))"
-    }
-    final class Counter: @unchecked Sendable {
-        private var n = -1
-        private let lock = NSLock()
-        func bump() -> Int { lock.lock(); defer { lock.unlock() }; n += 1; return n }
-    }
-}
-
-struct FixedDateProvider: DateProvider {
-    let date: Date
-    func now() -> Date { date }
 }

@@ -8,7 +8,7 @@ import XCTest
 /// `derived_from` edge.
 final class SourceNoteTests: XCTestCase {
     func testIngestEmitsSourceNoteAndLinksAtomicNoteToIt() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
         let inbox = vault.inbox
@@ -24,7 +24,7 @@ final class SourceNoteTests: XCTestCase {
         ]
         let client = DispatchingFakeClient(routes: routes)
         let orch = Orchestrator(
-            skillRunner: SkillRunner(client: client, skillsRoot: Self.skillsRoot),
+            skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSRC000000000000000000A", "01JNOT000000000000000000B"]),
             dateProvider: FixedDateProvider(date: Date())
         )
@@ -43,15 +43,4 @@ final class SourceNoteTests: XCTestCase {
                       "must include a derived_from edge to the source note")
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-    private static var skillsRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent(); url.deleteLastPathComponent(); url.deleteLastPathComponent()
-        return url.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
-    }
 }

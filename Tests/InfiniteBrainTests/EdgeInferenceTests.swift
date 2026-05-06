@@ -6,7 +6,7 @@ import XCTest
 /// the returned edges into the new note's frontmatter.
 final class EdgeInferenceTests: XCTestCase {
     func testEdgesArePersistedAfterAdd() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
         let inbox = vault.inbox
@@ -28,7 +28,7 @@ final class EdgeInferenceTests: XCTestCase {
         // Pre-populate the index so reconcile sees a candidate, which triggers infer-edges.
         await index.record(id: "01JFACT0000000000000000001", vector: try await provider.embed("free tier dropped"))
         let orchestrator = Orchestrator(
-            skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
+            skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSRC0000000000000000001", "01JNEW0000000000000000002"]),
             dateProvider: FixedDateProvider(date: Date()),
             embeddings: provider,
@@ -56,15 +56,4 @@ final class EdgeInferenceTests: XCTestCase {
         })
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-    private static var bundledSkillsRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent(); url.deleteLastPathComponent(); url.deleteLastPathComponent()
-        return url.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
-    }
 }

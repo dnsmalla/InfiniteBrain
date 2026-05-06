@@ -3,7 +3,7 @@ import XCTest
 
 final class VaultStoreTests: XCTestCase {
     func testWriteThenReadRoundTrip() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
         let store = VaultStore(vault: vault)
 
@@ -41,7 +41,7 @@ final class VaultStoreTests: XCTestCase {
     }
 
     func testFilePathFollowsTypeAndIdConvention() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
         let store = VaultStore(vault: vault)
 
@@ -69,7 +69,7 @@ final class VaultStoreTests: XCTestCase {
     }
 
     func testReadingMissingNoteThrows() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
         let store = VaultStore(vault: vault)
         do {
@@ -82,10 +82,4 @@ final class VaultStoreTests: XCTestCase {
         }
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
 }

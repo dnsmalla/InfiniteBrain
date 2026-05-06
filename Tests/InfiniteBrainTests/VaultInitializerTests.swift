@@ -3,10 +3,10 @@ import XCTest
 
 final class VaultInitializerTests: XCTestCase {
     func testCopiesBundledSkillsAndRulesIntoVaultSidecar() throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
-        let init_ = VaultInitializer(bundledSkills: Self.bundledSkills, bundledRules: Self.bundledRules)
+        let init_ = VaultInitializer(bundledSkills: TestPaths.bundledSkills, bundledRules: TestPaths.bundledRules)
         try init_.ensureSeeded(vault: vault)
 
         let fm = FileManager.default
@@ -17,10 +17,10 @@ final class VaultInitializerTests: XCTestCase {
     }
 
     func testDoesNotOverwriteUserEditedSkill() throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
-        let init_ = VaultInitializer(bundledSkills: Self.bundledSkills, bundledRules: Self.bundledRules)
+        let init_ = VaultInitializer(bundledSkills: TestPaths.bundledSkills, bundledRules: TestPaths.bundledRules)
         try init_.ensureSeeded(vault: vault)
 
         let userEdit = vault.skillsDir.appendingPathComponent("classify-node/SKILL.md")
@@ -31,18 +31,4 @@ final class VaultInitializerTests: XCTestCase {
         XCTAssertEqual(after, "USER-EDITED CONTENT", "must not overwrite user-edited skill")
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-
-    private static var repoRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent(); url.deleteLastPathComponent(); url.deleteLastPathComponent()
-        return url
-    }
-    private static var bundledSkills: URL { repoRoot.appendingPathComponent("Sources/InfiniteBrain/Resources/skills") }
-    private static var bundledRules:  URL { repoRoot.appendingPathComponent("Sources/InfiniteBrain/Resources/rules") }
 }

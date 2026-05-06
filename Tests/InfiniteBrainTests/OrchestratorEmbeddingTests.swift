@@ -7,7 +7,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
     /// previously-recorded note as a neighbour, and pass it to reconcile-note
     /// as a non-empty `nearest` candidate list.
     func testReconcileSeesPreviousNoteAsCandidateOnSecondIngest() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
         let inbox = vault.inbox
@@ -32,7 +32,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
 
         // First ingest — fresh index. Two ids consumed: source note + atomic note.
         let orchestrator1 = Orchestrator(
-            skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
+            skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JFIRSTSRC0000000000000A", "01JFIRSTNOTE000000000000B"]),
             dateProvider: FixedDateProvider(date: Date()),
             embeddings: provider,
@@ -45,7 +45,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
         let index2 = EmbeddingIndex(storeURL: indexURL)
         try await index2.load()
         let orchestrator2 = Orchestrator(
-            skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
+            skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSECONDSRC000000000000C", "01JSECONDNOTE00000000000D"]),
             dateProvider: FixedDateProvider(date: Date()),
             embeddings: provider,
@@ -61,70 +61,4 @@ final class OrchestratorEmbeddingTests: XCTestCase {
                       "second reconcile must see the first atomic note's id in nearest[]")
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-
-    private static var bundledSkillsRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent(); url.deleteLastPathComponent(); url.deleteLastPathComponent()
-        return url.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
-    }
-}
-
-// Records every (system, user) the client sees, then lets tests query them.
-actor PromptCapture {
-    private(set) var calls: [(system: String, user: String)] = []
-    func record(system: String, user: String) { calls.append((system, user)) }
-    func prompts(matching needle: String) -> [String] {
-        calls.filter { $0.system.contains(needle) }.map(\.user)
-    }
-}
-
-/// Like DispatchingFakeClient but also records prompts via the supplied capture.
-actor CapturingDispatchClient: LLMClient {
-    private let routes: [String: String]
-    private let capture: PromptCapture
-    init(routes: [String: String], capture: PromptCapture) {
-        self.routes = routes; self.capture = capture
-    }
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
-        await capture.record(system: system, user: user)
-        for (key, value) in routes where system.contains(matchToken(forSkill: key)) {
-            return value
-        }
-        throw NSError(domain: "CapturingDispatchClient", code: 1)
-    }
-    private func matchToken(forSkill name: String) -> String {
-        switch name {
-        case "atomize-text":   return "convert long-form text into atomic units"
-        case "classify-node":  return "Pick exactly one type"
-        case "summarize-note": return "Write a single English sentence"
-        case "reconcile-note": return "Compare the candidate against"
-        default: return name
-        }
-    }
-}
-
-/// Deterministic embedding for tests: hashes the input into a fixed-dim vector.
-/// Same text → same vector, different text → different vector. Good enough to
-/// verify the wiring (real embeddings live in NLEmbeddingProvider).
-struct HashEmbeddingProvider: EmbeddingProvider {
-    let dim: Int
-    func embed(_ text: String) async throws -> [Float] {
-        var v = [Float](repeating: 0, count: dim)
-        var hash: UInt64 = 1469598103934665603
-        for byte in text.utf8 {
-            hash ^= UInt64(byte)
-            hash &*= 1099511628211
-        }
-        for i in 0..<dim {
-            let mixed = hash &+ UInt64(i) &* 2654435761
-            v[i] = Float(Int32(truncatingIfNeeded: mixed)) / Float(Int32.max)
-        }
-        return v
-    }
 }

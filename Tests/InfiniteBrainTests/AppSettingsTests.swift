@@ -46,16 +46,3 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertTrue(settings.isConfigured)
     }
 }
-
-/// Keychain double for tests — same protocol, simple dictionary.
-final class InMemoryKeychain: KeychainStore, @unchecked Sendable {
-    private var storage: [String: String] = [:]
-    private let lock = NSLock()
-    func get(_ key: String) throws -> String? {
-        lock.lock(); defer { lock.unlock() }; return storage[key]
-    }
-    func set(_ value: String?, forKey key: String) throws {
-        lock.lock(); defer { lock.unlock() }
-        if let value { storage[key] = value } else { storage.removeValue(forKey: key) }
-    }
-}

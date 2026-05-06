@@ -4,7 +4,7 @@ import XCTest
 
 final class QueryServiceTests: XCTestCase {
     func testReturnsAnswerWithCitedIds() async throws {
-        let vault = try Self.makeVault()
+        let vault = try TestVault.make()
         defer { try? FileManager.default.removeItem(at: vault.root) }
 
         // Seed the vault with two notes the QueryService can retrieve.
@@ -42,7 +42,7 @@ final class QueryServiceTests: XCTestCase {
         let client = DispatchingFakeClient(routes: routes)
 
         let service = QueryService(
-            skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
+            skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             store: store,
             embeddings: StaticEmbed(),
             index: index
@@ -53,16 +53,4 @@ final class QueryServiceTests: XCTestCase {
         XCTAssertEqual(answer.citedIds, ["01JFACT0000000000000000001"])
     }
 
-    private static func makeVault() throws -> Vault {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ib-vault-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return Vault(root: root)
-    }
-
-    private static var bundledSkillsRoot: URL {
-        var url = URL(fileURLWithPath: #filePath)
-        url.deleteLastPathComponent(); url.deleteLastPathComponent(); url.deleteLastPathComponent()
-        return url.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
-    }
 }

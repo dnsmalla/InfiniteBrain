@@ -17,8 +17,9 @@ ViewModels (@Observable)               │
                      └────────────────┬───────────────────┘
                                       │
                      ┌────────────────┴───────────────────┐
-Services             │ Orchestrator · Reconciler           │
-                     │ VaultStore · PDFExtractor · …       │
+Services             │ Orchestrator · VaultStore ·          │
+                     │ VaultInitializer · QueryService ·    │
+                     │ PDFExtractor · AppSettings           │
                      └────────────────┬───────────────────┘
                                       │
                      ┌────────────────┴───────────────────┐
