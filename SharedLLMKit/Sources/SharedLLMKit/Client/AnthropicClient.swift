@@ -25,7 +25,7 @@ public struct AnthropicClient: LLMClient {
     public init(
         apiKey: String,
         model: String = "claude-sonnet-4-6",
-        maxTokens: Int = 4096,
+        maxTokens: Int = 8192,
         endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!,
         session: URLSession = .shared,
         retryPolicy: RetryPolicy = .init()

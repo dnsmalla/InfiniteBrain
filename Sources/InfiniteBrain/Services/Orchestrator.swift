@@ -28,6 +28,7 @@ public actor Orchestrator {
     public let index: EmbeddingIndex?
     public let candidateK: Int
     public let confidenceThreshold: Float
+    public let chunkSize: Int
 
     public init(
         skillRunner: SkillRunner,
@@ -36,7 +37,8 @@ public actor Orchestrator {
         embeddings: EmbeddingProvider? = nil,
         index: EmbeddingIndex? = nil,
         candidateK: Int = 5,
-        confidenceThreshold: Float = 0.7
+        confidenceThreshold: Float = 0.7,
+        chunkSize: Int = 16_000
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
@@ -45,6 +47,7 @@ public actor Orchestrator {
         self.index = index
         self.candidateK = candidateK
         self.confidenceThreshold = confidenceThreshold
+        self.chunkSize = chunkSize
     }
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
@@ -71,11 +74,25 @@ public actor Orchestrator {
             await index.record(id: sourceNote.id, vector: v)
         }
 
-        let atomized = try await skillRunner.run(
-            "atomize-text",
-            input: ["text": text, "source_id": sourceNote.id]
-        )
-        let units = (atomized["units"] as? [[String: Any]]) ?? []
+        // Chunk the input so long documents (books, multi-chapter PDFs) don't
+        // blow Claude's context window or silently truncate against
+        // max_tokens. Each chunk is atomised separately and the resulting
+        // units are flattened.
+        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+        var units: [[String: Any]] = []
+        for (idx, chunk) in chunks.enumerated() {
+            let atomized = try await skillRunner.run(
+                "atomize-text",
+                input: [
+                    "text": chunk,
+                    "source_id": sourceNote.id,
+                    "chunk_index": idx,
+                    "chunk_total": chunks.count,
+                ]
+            )
+            let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
+            units.append(contentsOf: chunkUnits)
+        }
 
         var result = IngestResult()
 

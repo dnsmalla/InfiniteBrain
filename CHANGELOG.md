@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0] — 2026-05-06
+
+Scale handling: works for inputs from a few paragraphs up to a 500-page book.
+
+- New `TextChunker` splits long input on paragraph boundaries (then sentence,
+  then hard char split as a last resort), respecting a configurable
+  `chunkSize` (default 16,000 chars ≈ ~4k tokens).
+- Orchestrator no longer sends the entire document to `atomize-text` in one
+  call. Each chunk is atomised separately and the resulting units are
+  flattened, so a 500-page book naturally produces hundreds of atomic notes
+  instead of being silently truncated to ~10–20 by the response token cap.
+- `atomize-text` SKILL.md updated: now declares `chunk_index` /
+  `chunk_total` inputs and tells the model not to invent cross-chunk
+  structure.
+- `AnthropicClient.maxTokens` default raised 4096 → 8192 to give atomize and
+  improve-note room to breathe.
+- IngestView log prints file size and approximate chunk count up front so
+  long ingests are observable.
+
 ## [0.3.0] — 2026-05-06
 
 Production-readiness pass driven by an honest internal review.

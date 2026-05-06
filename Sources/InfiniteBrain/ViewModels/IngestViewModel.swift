@@ -60,7 +60,9 @@ public final class IngestViewModel: ObservableObject {
 
         var totals = IngestResult()
         for file in droppedFiles {
-            append("→ \(file.lastPathComponent)")
+            let bytes = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0
+            let approxChunks = max(1, bytes / 16_000)
+            append("→ \(file.lastPathComponent)  (\(byteFormatter.string(fromByteCount: Int64(bytes))), ~\(approxChunks) chunk\(approxChunks == 1 ? "" : "s"))")
             do {
                 let r = try await orchestrator.ingest(file: file, into: vault)
                 append("   added: \(r.added)  improved: \(r.improved)  skipped: \(r.skipped)")
@@ -79,6 +81,12 @@ public final class IngestViewModel: ObservableObject {
     private func append(_ line: String) {
         log.append(line)
     }
+
+    private let byteFormatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f
+    }()
 
     /// Skills live in the vault sidecar so users can edit them. If the sidecar
     /// copy is absent, fall back to the bundled copy inside the app.

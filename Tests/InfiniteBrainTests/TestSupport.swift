@@ -54,7 +54,7 @@ actor DispatchingFakeClient: LLMClient {
     /// Unique substring guaranteed to appear in each bundled skill's body.
     static func matchToken(forSkill name: String) -> String {
         switch name {
-        case "atomize-text":    return "convert long-form text into atomic units"
+        case "atomize-text":    return "convert a chunk of long-form text"
         case "classify-node":   return "Pick exactly one type"
         case "summarize-note":  return "Write a single English sentence"
         case "reconcile-note":  return "Compare the candidate against"
