@@ -116,6 +116,7 @@ actor DispatchingFakeClient: LLMClient {
         case "infer-edges":    return "You connect a new note"
         case "extract-pdf":    return "Take per-page raw text"
         case "query-brain":    return "Two-pass retrieval"
+        case "answer-question":return "Answer the user's `question`"
         default: return name
         }
     }

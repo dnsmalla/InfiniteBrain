@@ -135,7 +135,7 @@ public actor Orchestrator {
 
             default:  // add
                 let now = dateProvider.now()
-                let note = Note(
+                var note = Note(
                     id: idGenerator.next(),
                     type: type,
                     title: title,
@@ -149,6 +149,21 @@ public actor Orchestrator {
                     updatedAt: now,
                     supersededBy: nil
                 )
+
+                if !nearest.isEmpty || true {  // run edge inference whenever a candidate set exists OR for v1 always (skill self-limits)
+                    let inferred = (try? await skillRunner.run(
+                        "infer-edges",
+                        input: [
+                            "new_note": [
+                                "id": note.id, "type": note.type.rawValue,
+                                "title": note.title, "summary": note.summary, "body": note.body,
+                            ],
+                            "candidates": nearest,
+                        ]
+                    )) ?? [:]
+                    note.edges = Self.parseEdges(from: inferred)
+                }
+
                 try await store.write(note)
                 if let index, let unitVector {
                     await index.record(id: note.id, vector: unitVector)
@@ -170,6 +185,19 @@ public actor Orchestrator {
             return pages.map(\.text).joined(separator: "\n\n")
         default:
             return try String(contentsOf: url, encoding: .utf8)
+        }
+    }
+
+    private static func parseEdges(from inferred: [String: Any]) -> [Edge] {
+        guard let raw = inferred["edges"] as? [[String: Any]] else { return [] }
+        return raw.compactMap { dict in
+            guard let typeRaw = dict["type"] as? String,
+                  let type = EdgeType(rawValue: typeRaw),
+                  let target = dict["target_id"] as? String,
+                  !target.isEmpty
+            else { return nil }
+            let evidence = dict["evidence"] as? String
+            return Edge(type: type, target: target, evidence: evidence)
         }
     }
 

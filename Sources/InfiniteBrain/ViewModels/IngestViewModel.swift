@@ -42,6 +42,8 @@ public final class IngestViewModel: ObservableObject {
         defer { isRunning = false }
 
         let vault = Vault(root: vaultURL)
+        do { try VaultInitializer().ensureSeeded(vault: vault) }
+        catch { append("could not seed vault: \(error.localizedDescription)") }
         let skillsRoot = Self.skillsRoot(for: vault)
         let client = AnthropicClient(apiKey: apiKey)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
