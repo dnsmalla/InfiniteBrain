@@ -31,6 +31,27 @@ public actor VaultStore {
         return try NoteSerializer.parse(content)
     }
 
+    /// Returns every note in the vault, parsed. Walks `<vault>/notes/<type>/`
+    /// and silently skips files that fail to parse so a single corrupted
+    /// note can't take down the whole listing.
+    public func allNotes() async throws -> [Note] {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: vault.notesRoot.path) else { return [] }
+        var out: [Note] = []
+        let typeDirs = try fm.contentsOfDirectory(at: vault.notesRoot, includingPropertiesForKeys: [.isDirectoryKey])
+        for dir in typeDirs {
+            guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+            let files = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+            for f in files where f.pathExtension == "md" {
+                guard let content = try? String(contentsOf: f, encoding: .utf8),
+                      let note = try? NoteSerializer.parse(content)
+                else { continue }
+                out.append(note)
+            }
+        }
+        return out
+    }
+
     // MARK: - Path conventions
 
     static func fileName(for note: Note) -> String {

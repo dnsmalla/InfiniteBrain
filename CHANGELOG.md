@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.0] — 2026-05-07
+
+Graph view — see the knowledge graph the app has been building, not just
+a list of files.
+
+- New `GraphLayout` (in InfiniteBrainCore, pure function): maps notes onto
+  a circular type-clustered layout. Each of the 16 NodeTypes gets a slice
+  of the canvas; notes within a type spread along three concentric rings.
+  Dangling edges (target missing from the input) are dropped.
+- `VaultStore.allNotes()` reads every note in a vault, silently skipping
+  files that fail to parse so a single corrupted note can't take down the
+  listing.
+- `GraphView` (in the GUI target) renders the layout via SwiftUI Canvas
+  with a hand-picked 16-colour palette, hit-tests taps to select a node,
+  and shows a sidebar with the selected note's type / title / summary or
+  a colour legend when nothing is selected.
+- The graph relayouts on window resize so it always fills the canvas.
+
+3 new layout tests cover empty input, position bounds, and dangling-edge
+filtering. 51 tests green (31 InfiniteBrain, 20 SharedLLMKit).
+
 ## [0.7.0] — 2026-05-07
 
 App packaging — InfiniteBrain.app and a distributable .dmg can now be
