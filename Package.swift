@@ -20,7 +20,9 @@ let package = Package(
             ],
             path: "Sources/InfiniteBrain",
             resources: [
-                .process("Resources")
+                .copy("Resources/skills"),
+                .copy("Resources/rules"),
+                .process("Resources/Assets.xcassets")
             ]
         ),
         .testTarget(
