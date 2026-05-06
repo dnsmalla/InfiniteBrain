@@ -7,7 +7,7 @@ import XCTest
 final class BundledSkillsTests: XCTestCase {
     func testEveryBundledSkillParses() throws {
         let skillsDir = Self.repoRoot
-            .appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
+            .appendingPathComponent("Sources/InfiniteBrainCore/Resources/skills", isDirectory: true)
 
         let entries = try FileManager.default.contentsOfDirectory(
             at: skillsDir, includingPropertiesForKeys: nil)

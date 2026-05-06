@@ -16,10 +16,27 @@ public struct IngestResult: Equatable, Sendable {
     }
 }
 
-/// Sequences pipeline stages per ingested file. End-to-end:
-///   read → atomize → (per unit) embed → classify → summarize → reconcile
-///   → write/skip/improve. Embedding-backed candidates flow into reconcile so
-///   duplicates can actually be detected.
+/// Outcome from the parallel decision phase. Phase B applies these serially
+/// so the vault and the embedding index stay consistent.
+enum UnitOutcome: Sendable {
+    case skip
+    case quarantine
+    case improve(updated: Note)
+    case add(note: Note, vector: [Float]?)
+}
+
+/// Sequences pipeline stages per ingested file.
+///
+/// End-to-end flow:
+///   read → atomize (per chunk) → for each unit, in parallel:
+///     classify → summarize → embed → fetch nearest → reconcile →
+///     (if add: build note + infer-edges)
+///     (if improve: read existing + improve-note)
+///   then serially: write outcomes to vault and update index.
+///
+/// `concurrency` controls how many units the parallel decision phase runs
+/// at once. Defaults to 4. Within a batch, units don't see each other in the
+/// candidate set — that's the documented trade-off for the speedup.
 public actor Orchestrator {
     public let skillRunner: SkillRunner
     public let idGenerator: IDGenerator
@@ -29,6 +46,7 @@ public actor Orchestrator {
     public let candidateK: Int
     public let confidenceThreshold: Float
     public let chunkSize: Int
+    public let concurrency: Int
 
     public init(
         skillRunner: SkillRunner,
@@ -38,7 +56,8 @@ public actor Orchestrator {
         index: EmbeddingIndex? = nil,
         candidateK: Int = 5,
         confidenceThreshold: Float = 0.7,
-        chunkSize: Int = 16_000
+        chunkSize: Int = 16_000,
+        concurrency: Int = 4
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
@@ -48,6 +67,7 @@ public actor Orchestrator {
         self.candidateK = candidateK
         self.confidenceThreshold = confidenceThreshold
         self.chunkSize = chunkSize
+        self.concurrency = max(1, concurrency)
     }
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
@@ -94,123 +114,31 @@ public actor Orchestrator {
             units.append(contentsOf: chunkUnits)
         }
 
+        // PHASE A — decide each unit's outcome with bounded parallelism.
+        // No vault writes here — the decision phase only reads.
+        let outcomes = try await decideOutcomes(
+            units: units,
+            sourceId: sourceNote.id,
+            sourceLabel: file.lastPathComponent,
+            store: store
+        )
+
+        // PHASE B — apply outcomes serially so the vault and index stay
+        // consistent and ordering is deterministic.
         var result = IngestResult()
-
-        for unit in units {
-            let title = (unit["title"] as? String) ?? "Untitled"
-            let body  = (unit["body"]  as? String) ?? ""
-
-            let classified = try await skillRunner.run(
-                "classify-node",
-                input: ["unit_title": title, "unit_body": body]
-            )
-            let typeRaw = (classified["type"] as? String) ?? "note"
-            let confidence = Self.numberValue(classified["confidence"])
-
-            // quality-bar.mdc: low-confidence → reroute to `custom` and flag.
-            let lowConfidence = confidence < confidenceThreshold
-            let type = lowConfidence ? .custom : (NodeType(rawValue: typeRaw) ?? .note)
-
-            let summarized = try await skillRunner.run(
-                "summarize-note",
-                input: ["title": title, "body": body]
-            )
-            let summary = (summarized["summary"] as? String) ?? ""
-
-            // Embed and look up nearest existing notes so reconcile can see real
-            // candidates. If embeddings are unavailable, the candidate list is
-            // empty and reconcile defaults to `add`.
-            var unitVector: [Float]? = nil
-            var nearest: [[String: Any]] = []
-            if let embeddings, let index {
-                unitVector = try await embeddings.embed(body)
-                if let v = unitVector {
-                    let hits = await index.nearest(to: v, k: candidateK)
-                    for hit in hits {
-                        if let neighbor = try? await store.read(id: hit.id) {
-                            nearest.append([
-                                "id": neighbor.id,
-                                "type": neighbor.type.rawValue,
-                                "title": neighbor.title,
-                                "summary": neighbor.summary,
-                                "score": Double(hit.score),
-                            ])
-                        }
-                    }
-                }
-            }
-
-            let reconciled = try await skillRunner.run(
-                "reconcile-note",
-                input: [
-                    "candidate": ["title": title, "body": body, "suggested_type": typeRaw],
-                    "nearest": nearest,
-                ]
-            )
-            let decision = (reconciled["decision"] as? String) ?? "add"
-
-            switch decision {
-            case "skip":
+        for outcome in outcomes {
+            switch outcome {
+            case .skip:
                 result.skipped += 1
-
-            case "improve":
-                guard let targetId = reconciled["target_id"] as? String else {
-                    result.quarantined += 1
-                    continue
-                }
-                let existing = try await store.read(id: targetId)
-                let improved = try await skillRunner.run(
-                    "improve-note",
-                    input: [
-                        "existing": ["title": existing.title, "body": existing.body, "summary": existing.summary],
-                        "candidate": ["title": title, "body": body],
-                    ]
-                )
-                let newBody    = (improved["new_body"]    as? String) ?? existing.body
-                let newSummary = (improved["new_summary"] as? String) ?? existing.summary
-                var updated = existing
-                updated.body = newBody
-                updated.summary = newSummary
-                updated.version += 1
-                updated.updatedAt = dateProvider.now()
-                updated.contentHash = Self.hash(newBody)
+            case .quarantine:
+                result.quarantined += 1
+            case .improve(let updated):
                 try await store.write(updated)
                 result.improved += 1
-
-            default:  // add
-                let writeNow = dateProvider.now()
-                var note = Note(
-                    id: idGenerator.next(),
-                    type: type,
-                    title: title,
-                    summary: summary,
-                    body: body,
-                    edges: [Edge(type: .derivedFrom, target: sourceNote.id, evidence: "extracted from \(file.lastPathComponent)")],
-                    sources: [sourceNote.id],
-                    contentHash: Self.hash(body),
-                    version: 1,
-                    createdAt: writeNow,
-                    updatedAt: writeNow,
-                    needsReview: lowConfidence
-                )
-
-                if !nearest.isEmpty {
-                    let inferred = (try? await skillRunner.run(
-                        "infer-edges",
-                        input: [
-                            "new_note": [
-                                "id": note.id, "type": note.type.rawValue,
-                                "title": note.title, "summary": note.summary, "body": note.body,
-                            ],
-                            "candidates": nearest,
-                        ]
-                    )) ?? [:]
-                    note.edges.append(contentsOf: Self.parseEdges(from: inferred))
-                }
-
+            case .add(let note, let vector):
                 try await store.write(note)
-                if let index, let unitVector {
-                    await index.record(id: note.id, vector: unitVector)
+                if let index, let vector {
+                    await index.record(id: note.id, vector: vector)
                 }
                 result.added += 1
             }
@@ -218,9 +146,172 @@ public actor Orchestrator {
 
         if let index {
             do { try await index.flush() }
-            catch { /* logged by caller via IngestViewModel; index reload re-derives from notes */ }
+            catch { /* index is rebuildable from the markdown; surfaced via caller */ }
         }
         return result
+    }
+
+    // MARK: - Phase A: parallel decision
+
+    /// Runs the per-unit decision pipeline in parallel up to `concurrency`,
+    /// preserving the original unit order in the returned outcomes array.
+    private func decideOutcomes(
+        units: [[String: Any]],
+        sourceId: String,
+        sourceLabel: String,
+        store: VaultStore
+    ) async throws -> [UnitOutcome] {
+        guard !units.isEmpty else { return [] }
+
+        // Reserve a stable id per unit up-front so parallel tasks get them in
+        // input order. The id flows into infer-edges (so the new note can be
+        // referenced) and ultimately into the written file.
+        let reservedIds: [String] = (0..<units.count).map { _ in idGenerator.next() }
+
+        var outcomes: [(Int, UnitOutcome)] = []
+        outcomes.reserveCapacity(units.count)
+
+        try await withThrowingTaskGroup(of: (Int, UnitOutcome).self) { group in
+            var nextToSubmit = 0
+            for _ in 0..<min(concurrency, units.count) {
+                let i = nextToSubmit; nextToSubmit += 1
+                let unit = units[i]; let id = reservedIds[i]
+                group.addTask { [self] in
+                    (i, try await decideOne(
+                        unit: unit, reservedId: id,
+                        sourceId: sourceId, sourceLabel: sourceLabel, store: store
+                    ))
+                }
+            }
+            while let pair = try await group.next() {
+                outcomes.append(pair)
+                if nextToSubmit < units.count {
+                    let i = nextToSubmit; nextToSubmit += 1
+                    let unit = units[i]; let id = reservedIds[i]
+                    group.addTask { [self] in
+                        (i, try await decideOne(
+                            unit: unit, reservedId: id,
+                            sourceId: sourceId, sourceLabel: sourceLabel, store: store
+                        ))
+                    }
+                }
+            }
+        }
+
+        return outcomes.sorted { $0.0 < $1.0 }.map { $0.1 }
+    }
+
+    private func decideOne(
+        unit: [String: Any],
+        reservedId: String,
+        sourceId: String,
+        sourceLabel: String,
+        store: VaultStore
+    ) async throws -> UnitOutcome {
+        let title = (unit["title"] as? String) ?? "Untitled"
+        let body  = (unit["body"]  as? String) ?? ""
+
+        let classified = try await skillRunner.run(
+            "classify-node",
+            input: ["unit_title": title, "unit_body": body]
+        )
+        let typeRaw = (classified["type"] as? String) ?? "note"
+        let confidence = Self.numberValue(classified["confidence"])
+        let lowConfidence = confidence < confidenceThreshold
+        let type = lowConfidence ? .custom : (NodeType(rawValue: typeRaw) ?? .note)
+
+        let summarized = try await skillRunner.run(
+            "summarize-note",
+            input: ["title": title, "body": body]
+        )
+        let summary = (summarized["summary"] as? String) ?? ""
+
+        var unitVector: [Float]? = nil
+        var nearest: [[String: Any]] = []
+        if let embeddings, let index {
+            unitVector = try await embeddings.embed(body)
+            if let v = unitVector {
+                let hits = await index.nearest(to: v, k: candidateK)
+                for hit in hits {
+                    if let neighbor = try? await store.read(id: hit.id) {
+                        nearest.append([
+                            "id": neighbor.id,
+                            "type": neighbor.type.rawValue,
+                            "title": neighbor.title,
+                            "summary": neighbor.summary,
+                            "score": Double(hit.score),
+                        ])
+                    }
+                }
+            }
+        }
+
+        let reconciled = try await skillRunner.run(
+            "reconcile-note",
+            input: [
+                "candidate": ["title": title, "body": body, "suggested_type": typeRaw],
+                "nearest": nearest,
+            ]
+        )
+        let decision = (reconciled["decision"] as? String) ?? "add"
+
+        switch decision {
+        case "skip":
+            return .skip
+
+        case "improve":
+            guard let targetId = reconciled["target_id"] as? String else { return .quarantine }
+            let existing: Note
+            do { existing = try await store.read(id: targetId) }
+            catch { return .quarantine }
+            let improved = try await skillRunner.run(
+                "improve-note",
+                input: [
+                    "existing": ["title": existing.title, "body": existing.body, "summary": existing.summary],
+                    "candidate": ["title": title, "body": body],
+                ]
+            )
+            let newBody    = (improved["new_body"]    as? String) ?? existing.body
+            let newSummary = (improved["new_summary"] as? String) ?? existing.summary
+            var updated = existing
+            updated.body = newBody
+            updated.summary = newSummary
+            updated.version += 1
+            updated.updatedAt = dateProvider.now()
+            updated.contentHash = Self.hash(newBody)
+            return .improve(updated: updated)
+
+        default:  // add
+            let writeNow = dateProvider.now()
+            var note = Note(
+                id: reservedId,
+                type: type,
+                title: title,
+                summary: summary,
+                body: body,
+                edges: [Edge(type: .derivedFrom, target: sourceId, evidence: "extracted from \(sourceLabel)")],
+                sources: [sourceId],
+                contentHash: Self.hash(body),
+                version: 1,
+                createdAt: writeNow,
+                updatedAt: writeNow,
+                needsReview: lowConfidence
+            )
+            if !nearest.isEmpty {
+                let inferred = (try? await skillRunner.run(
+                    "infer-edges",
+                    input: [
+                        "new_note": [
+                            "id": note.id, "type": note.type.rawValue,
+                            "title": note.title, "summary": note.summary, "body": note.body,
+                        ],
+                        "candidates": nearest,
+                    ]
+                )) ?? [:]
+                note.edges.append(contentsOf: Self.parseEdges(from: inferred))
+            }
+            return .add(note: note, vector: unitVector)
+        }
     }
 
     // MARK: - Helpers
