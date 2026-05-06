@@ -1,4 +1,5 @@
 import SwiftUI
+import InfiniteBrainCore
 
 struct QueryView: View {
     @EnvironmentObject var settings: AppSettings

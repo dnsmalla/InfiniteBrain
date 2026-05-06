@@ -1,5 +1,5 @@
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 @testable import SharedLLMKit
 
 final class OrchestratorTests: XCTestCase {

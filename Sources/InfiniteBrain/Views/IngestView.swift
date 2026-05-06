@@ -1,4 +1,5 @@
 import SwiftUI
+import InfiniteBrainCore
 import UniformTypeIdentifiers
 
 struct IngestView: View {

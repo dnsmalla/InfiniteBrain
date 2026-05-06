@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0] — 2026-05-07
+
+CLI: `infb` executable provides the same ingest + query pipeline from the
+terminal, so a folder of PDFs can be processed without opening the GUI.
+
+```
+infb ingest book.pdf chapter1.md  --vault ~/MyBrain
+infb query  "what did we decide about pricing?"  --vault ~/MyBrain
+infb seed   ~/MyBrain
+```
+
+`ANTHROPIC_API_KEY` and `INFINITEBRAIN_VAULT` env vars are honored, so
+shell scripts and cron jobs don't need to repeat flags.
+
+Refactor
+- Models, services, view-models, and bundled skills/rules moved into a new
+  `InfiniteBrainCore` library target. Both the `InfiniteBrain` GUI and the
+  `infb` CLI executables depend on it
+- `Vault.init` is now public; `BundledResources` exposes the skills/rules
+  paths so consumers don't need to reach into `Bundle.module`
+
 ## [0.4.0] — 2026-05-06
 
 Scale handling: works for inputs from a few paragraphs up to a 500-page book.

@@ -1,5 +1,5 @@
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 @testable import SharedLLMKit
 
 /// Citation-policy.mdc requires every fact/decision/event to cite a source.

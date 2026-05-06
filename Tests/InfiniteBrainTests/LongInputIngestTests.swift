@@ -1,5 +1,5 @@
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 @testable import SharedLLMKit
 
 /// A long input must be chunked and processed in multiple atomize-text calls,

@@ -1,4 +1,5 @@
 import SwiftUI
+import InfiniteBrainCore
 
 struct GraphView: View {
     var body: some View {

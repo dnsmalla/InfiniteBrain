@@ -1,5 +1,5 @@
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 
 final class AppSettingsTests: XCTestCase {
     private var defaults: UserDefaults!

@@ -93,7 +93,7 @@ public final class IngestViewModel: ObservableObject {
     private static func skillsRoot(for vault: Vault) -> URL {
         let custom = vault.skillsDir
         if FileManager.default.fileExists(atPath: custom.path) { return custom }
-        if let bundled = Bundle.main.url(forResource: "skills", withExtension: nil) {
+        if let bundled = Bundle.module.url(forResource: "skills", withExtension: nil) {
             return bundled
         }
         return custom  // best effort

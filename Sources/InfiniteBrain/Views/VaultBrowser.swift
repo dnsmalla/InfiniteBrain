@@ -1,4 +1,5 @@
 import SwiftUI
+import InfiniteBrainCore
 
 struct VaultBrowser: View {
     @EnvironmentObject var settings: AppSettings

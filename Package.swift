@@ -7,27 +7,38 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "InfiniteBrain", targets: ["InfiniteBrain"])
+        .executable(name: "InfiniteBrain", targets: ["InfiniteBrain"]),
+        .executable(name: "infb", targets: ["InfiniteBrainCLI"]),
+        .library(name: "InfiniteBrainCore", targets: ["InfiniteBrainCore"]),
     ],
     dependencies: [
         .package(path: "SharedLLMKit")
     ],
     targets: [
-        .executableTarget(
-            name: "InfiniteBrain",
+        .target(
+            name: "InfiniteBrainCore",
             dependencies: [
                 .product(name: "SharedLLMKit", package: "SharedLLMKit")
             ],
-            path: "Sources/InfiniteBrain",
+            path: "Sources/InfiniteBrainCore",
             resources: [
                 .copy("Resources/skills"),
                 .copy("Resources/rules"),
-                .process("Resources/Assets.xcassets")
             ]
+        ),
+        .executableTarget(
+            name: "InfiniteBrain",
+            dependencies: ["InfiniteBrainCore"],
+            path: "Sources/InfiniteBrain"
+        ),
+        .executableTarget(
+            name: "InfiniteBrainCLI",
+            dependencies: ["InfiniteBrainCore"],
+            path: "Sources/InfiniteBrainCLI"
         ),
         .testTarget(
             name: "InfiniteBrainTests",
-            dependencies: ["InfiniteBrain"],
+            dependencies: ["InfiniteBrainCore"],
             path: "Tests/InfiniteBrainTests"
         )
     ]

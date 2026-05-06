@@ -1,4 +1,5 @@
 import SwiftUI
+import InfiniteBrainCore
 
 @main
 struct InfiniteBrainApp: App {

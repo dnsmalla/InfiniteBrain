@@ -59,13 +59,12 @@ back to a source note.
 
 ---
 
-## Quick start
+## Quick start (GUI)
 
 ```bash
 git clone https://github.com/dnsmalla/InfiniteBrain.git
 cd InfiniteBrain
-swift build
-swift run
+swift run InfiniteBrain
 ```
 
 Then in the app:
@@ -79,6 +78,30 @@ Then in the app:
 The first ingest also copies editable copies of all the AI prompts (called
 "skills") into `<your-vault>/.infinitebrain/skills/`. You can tweak them
 without rebuilding the app — see [Tuning the AI](#tuning-the-ai) below.
+
+## Quick start (CLI)
+
+A separate executable, `infb`, gives you the same pipeline from the
+terminal — useful for batch ingesting a folder of PDFs or scripting the
+brain into other tools.
+
+```bash
+swift build
+export ANTHROPIC_API_KEY=sk-ant-…
+export INFINITEBRAIN_VAULT=~/MyBrain
+
+# create the vault folder + copy editable skills into it
+swift run infb seed ~/MyBrain
+
+# ingest one or many files
+swift run infb ingest book.pdf chapter1.md notes.txt
+
+# ask the brain a question
+swift run infb query "what did we decide about pricing?"
+```
+
+Both `--vault` and `--api-key` flags work too if you don't want env vars.
+Run `swift run infb help` for the full reference.
 
 ---
 

@@ -32,7 +32,7 @@ public final class QueryViewModel: ObservableObject {
         let vault = Vault(root: vaultURL)
         let skillsRoot = FileManager.default.fileExists(atPath: vault.skillsDir.path)
             ? vault.skillsDir
-            : (Bundle.main.url(forResource: "skills", withExtension: nil) ?? vault.skillsDir)
+            : (Bundle.module.url(forResource: "skills", withExtension: nil) ?? vault.skillsDir)
 
         let runner = SkillRunner(client: AnthropicClient(apiKey: apiKey), skillsRoot: skillsRoot)
         let store = VaultStore(vault: vault)

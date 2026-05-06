@@ -10,8 +10,8 @@ public struct VaultInitializer: Sendable {
     public let bundledRules: URL?
 
     public init(bundledSkills: URL? = nil, bundledRules: URL? = nil) {
-        self.bundledSkills = bundledSkills ?? Bundle.main.url(forResource: "skills", withExtension: nil)
-        self.bundledRules  = bundledRules  ?? Bundle.main.url(forResource: "rules",  withExtension: nil)
+        self.bundledSkills = bundledSkills ?? Bundle.module.url(forResource: "skills", withExtension: nil)
+        self.bundledRules  = bundledRules  ?? Bundle.module.url(forResource: "rules",  withExtension: nil)
     }
 
     public func ensureSeeded(vault: Vault) throws {

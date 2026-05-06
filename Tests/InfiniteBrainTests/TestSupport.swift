@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 @testable import SharedLLMKit
 
 // Shared test helpers. Single source of truth for fixtures and fakes used
@@ -18,11 +18,11 @@ enum TestPaths {
     }
 
     static var bundledSkills: URL {
-        repoRoot.appendingPathComponent("Sources/InfiniteBrain/Resources/skills", isDirectory: true)
+        repoRoot.appendingPathComponent("Sources/InfiniteBrainCore/Resources/skills", isDirectory: true)
     }
 
     static var bundledRules: URL {
-        repoRoot.appendingPathComponent("Sources/InfiniteBrain/Resources/rules", isDirectory: true)
+        repoRoot.appendingPathComponent("Sources/InfiniteBrainCore/Resources/rules", isDirectory: true)
     }
 }
 

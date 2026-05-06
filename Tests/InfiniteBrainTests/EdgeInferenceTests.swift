@@ -1,5 +1,5 @@
 import XCTest
-@testable import InfiniteBrain
+@testable import InfiniteBrainCore
 @testable import SharedLLMKit
 
 /// After a note is added, the orchestrator must call `infer-edges` and persist
