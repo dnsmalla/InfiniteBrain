@@ -23,20 +23,37 @@ final class EdgeInferenceTests: XCTestCase {
         ]
 
         let client = DispatchingFakeClient(routes: routes)
+        let provider = HashEmbeddingProvider(dim: 8)
+        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("e.json"))
+        // Pre-populate the index so reconcile sees a candidate, which triggers infer-edges.
+        await index.record(id: "01JFACT0000000000000000001", vector: try await provider.embed("free tier dropped"))
         let orchestrator = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
-            idGenerator: FixedIDGenerator(ids: ["01JNEW0000000000000000001"]),
-            dateProvider: FixedDateProvider(date: Date())
+            idGenerator: FixedIDGenerator(ids: ["01JSRC0000000000000000001", "01JNEW0000000000000000002"]),
+            dateProvider: FixedDateProvider(date: Date()),
+            embeddings: provider,
+            index: index
         )
+        // Pre-write the candidate note so VaultStore.read in the orchestrator's
+        // candidate-summary lookup succeeds (otherwise `nearest` ends up empty).
+        let store = VaultStore(vault: vault)
+        try await store.write(Note(
+            id: "01JFACT0000000000000000001", type: .fact, title: "Stripe fee floor",
+            summary: "Stripe charges a $0.30 floor.",
+            body: "details",
+            edges: [], sources: [], contentHash: "h", version: 1,
+            createdAt: Date(), updatedAt: Date()))
+
         let r = try await orchestrator.ingest(file: f, into: vault)
         XCTAssertEqual(r.added, 1)
 
-        let store = VaultStore(vault: vault)
-        let note = try await store.read(id: "01JNEW0000000000000000001")
-        XCTAssertEqual(note.edges.count, 1)
-        XCTAssertEqual(note.edges.first?.type, .supports)
-        XCTAssertEqual(note.edges.first?.target, "01JFACT0000000000000000001")
-        XCTAssertEqual(note.edges.first?.evidence, "price floor proves it")
+        let note = try await store.read(id: "01JNEW0000000000000000002")
+        // The new note carries: a derived_from edge to the source, plus the
+        // inferred `supports` edge to the pre-existing fact.
+        XCTAssertTrue(note.edges.contains { $0.type == .derivedFrom && $0.target == "01JSRC0000000000000000001" })
+        XCTAssertTrue(note.edges.contains {
+            $0.type == .supports && $0.target == "01JFACT0000000000000000001" && $0.evidence == "price floor proves it"
+        })
     }
 
     private static func makeVault() throws -> Vault {

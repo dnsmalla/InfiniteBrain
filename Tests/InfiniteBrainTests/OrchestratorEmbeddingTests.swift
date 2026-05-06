@@ -30,10 +30,10 @@ final class OrchestratorEmbeddingTests: XCTestCase {
         let provider = HashEmbeddingProvider(dim: 16)
         let indexURL = vault.sidecar.appendingPathComponent("embeddings.json")
 
-        // First ingest — fresh index.
+        // First ingest — fresh index. Two ids consumed: source note + atomic note.
         let orchestrator1 = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
-            idGenerator: FixedIDGenerator(ids: ["01JFIRST0000000000000000001"]),
+            idGenerator: FixedIDGenerator(ids: ["01JFIRSTSRC0000000000000A", "01JFIRSTNOTE000000000000B"]),
             dateProvider: FixedDateProvider(date: Date()),
             embeddings: provider,
             index: EmbeddingIndex(storeURL: indexURL)
@@ -46,20 +46,19 @@ final class OrchestratorEmbeddingTests: XCTestCase {
         try await index2.load()
         let orchestrator2 = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: Self.bundledSkillsRoot),
-            idGenerator: FixedIDGenerator(ids: ["01JSECOND000000000000000002"]),
+            idGenerator: FixedIDGenerator(ids: ["01JSECONDSRC000000000000C", "01JSECONDNOTE00000000000D"]),
             dateProvider: FixedDateProvider(date: Date()),
             embeddings: provider,
             index: index2
         )
         _ = try await orchestrator2.ingest(file: f2, into: vault)
 
-        // Inspect the reconcile-note prompts.
         let reconcilePrompts = await capture.prompts(matching: "Compare the candidate against")
         XCTAssertEqual(reconcilePrompts.count, 2)
-        XCTAssertFalse(reconcilePrompts[0].contains("01JFIRST0000000000000000001"),
+        XCTAssertFalse(reconcilePrompts[0].contains("01JFIRSTNOTE000000000000B"),
                        "first reconcile should not see itself as a candidate")
-        XCTAssertTrue(reconcilePrompts[1].contains("01JFIRST0000000000000000001"),
-                      "second reconcile must see the first note's id in nearest[]")
+        XCTAssertTrue(reconcilePrompts[1].contains("01JFIRSTNOTE000000000000B"),
+                      "second reconcile must see the first atomic note's id in nearest[]")
     }
 
     private static func makeVault() throws -> Vault {

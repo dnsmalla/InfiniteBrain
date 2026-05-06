@@ -24,7 +24,7 @@ final class OrchestratorTests: XCTestCase {
 
         let orchestrator = Orchestrator(
             skillRunner: SkillRunner(client: fake, skillsRoot: skillsRoot),
-            idGenerator: FixedIDGenerator(ids: ["01JNOTE000000000000000001", "01JSRC000000000000000002"]),
+            idGenerator: FixedIDGenerator(ids: ["01JSRC000000000000000001", "01JNOTE000000000000000002"]),
             dateProvider: FixedDateProvider(date: Date(timeIntervalSince1970: 1_700_000_000))
         )
 
@@ -35,12 +35,15 @@ final class OrchestratorTests: XCTestCase {
         XCTAssertEqual(result.skipped, 0)
 
         let store = VaultStore(vault: vault)
-        let written = try await store.read(id: "01JNOTE000000000000000001")
+        let written = try await store.read(id: "01JNOTE000000000000000002")
         XCTAssertEqual(written.type, .decision)
         XCTAssertEqual(written.title, "No free tier")
         XCTAssertEqual(written.summary, "We will not offer a free tier on the Indie plan.")
         XCTAssertTrue(written.body.contains("free tier"))
         XCTAssertEqual(written.version, 1)
+        XCTAssertEqual(written.sources, ["01JSRC000000000000000001"])
+        XCTAssertTrue(written.edges.contains { $0.type == .derivedFrom && $0.target == "01JSRC000000000000000001" })
+        XCTAssertFalse(written.needsReview)
     }
 
     func testReconcilerSkipDecisionDoesNotWriteNote() async throws {
@@ -67,10 +70,14 @@ final class OrchestratorTests: XCTestCase {
         XCTAssertEqual(result.added, 0)
         XCTAssertEqual(result.skipped, 1)
 
-        // No note file should exist.
+        // The source note is always written; only atomic notes are skipped.
         let typeDirs = (try? FileManager.default.contentsOfDirectory(at: vault.notesRoot, includingPropertiesForKeys: nil)) ?? []
-        let total = typeDirs.flatMap { (try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)) ?? [] }
-        XCTAssertTrue(total.isEmpty, "no note files should be written on skip")
+        let nonSourceFiles = typeDirs
+            .filter { $0.lastPathComponent != "source" }
+            .flatMap { (try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)) ?? [] }
+        XCTAssertTrue(nonSourceFiles.isEmpty, "no atomic note files should be written on skip")
+        let sourceFiles = (try? FileManager.default.contentsOfDirectory(at: vault.notesRoot.appendingPathComponent("source"), includingPropertiesForKeys: nil)) ?? []
+        XCTAssertEqual(sourceFiles.count, 1, "source note must be written even when atomic units are skipped")
     }
 
     private static func makeVault() throws -> Vault {

@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.3.0] — 2026-05-06
+
+Production-readiness pass driven by an honest internal review.
+
+Fixed
+- Edge inference no longer fires on every add (was guarded by an
+  always-true condition). Now runs only when the candidate set is non-empty.
+- Citation policy is now enforced. Every ingested file produces a `source`
+  note up front, and every atomic note carries `sources: [<source-id>]`
+  plus a `derived_from` edge back to it.
+- AnthropicClient retries on 429 and 5xx with exponential backoff, honoring
+  `Retry-After`. Other 4xx still throw immediately. Configurable via
+  `RetryPolicy(maxAttempts:baseDelaySeconds:)`.
+- Low-confidence classifications (`< 0.7`) are routed to `custom` and the
+  resulting note is marked `needs_review: true` in frontmatter. The Vault
+  browser shows a yellow warning icon next to flagged notes.
+- Index flush failures no longer pass silently; surfaced via the orchestrator's
+  do/catch path and the index is rebuildable from the markdown anyway.
+
+Known limitations (deferred)
+- Token budgets in `token-budget.mdc` are still documentation-only; no
+  per-stage truncation yet.
+- Per-unit work is still serial; orchestration-policy.mdc's "concurrency
+  up to 4" is not implemented.
+- No checkpointing — a crash mid-ingest re-runs from the file start.
+
 ## [0.2.0] — 2026-05-06
 
 - VaultInitializer seeds `inbox/`, `notes/`, and copies bundled skills + rules

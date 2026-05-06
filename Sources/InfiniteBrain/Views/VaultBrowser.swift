@@ -12,8 +12,15 @@ struct VaultBrowser: View {
                 ForEach(notesByType, id: \.type) { group in
                     Section(group.type.rawValue.capitalized) {
                         ForEach(group.files, id: \.self) { url in
-                            Text(displayName(url))
-                                .tag(url as URL?)
+                            HStack(spacing: 4) {
+                                if Self.fileNeedsReview(url) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.yellow)
+                                        .help("Low confidence — review and re-classify")
+                                }
+                                Text(displayName(url))
+                            }
+                            .tag(url as URL?)
                         }
                     }
                 }
@@ -34,6 +41,15 @@ struct VaultBrowser: View {
         .toolbar {
             Button("Refresh", systemImage: "arrow.clockwise", action: refresh)
         }
+    }
+
+    private static func fileNeedsReview(_ url: URL) -> Bool {
+        // Cheap scan of the frontmatter for the `needs_review: true` line.
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let data = (try? handle.read(upToCount: 4096)) ?? Data()
+        let head = String(data: data, encoding: .utf8) ?? ""
+        return head.contains("needs_review: true")
     }
 
     private func displayName(_ url: URL) -> String {

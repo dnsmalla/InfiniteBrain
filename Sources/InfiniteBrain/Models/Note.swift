@@ -14,4 +14,35 @@ public struct Note: Codable, Identifiable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
     public var supersededBy: String?   // optional pointer to newer note id
+    public var needsReview: Bool       // set when classification confidence is low
+
+    public init(
+        id: String,
+        type: NodeType,
+        title: String,
+        summary: String,
+        body: String,
+        edges: [Edge],
+        sources: [String],
+        contentHash: String,
+        version: Int,
+        createdAt: Date,
+        updatedAt: Date,
+        supersededBy: String? = nil,
+        needsReview: Bool = false
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.summary = summary
+        self.body = body
+        self.edges = edges
+        self.sources = sources
+        self.contentHash = contentHash
+        self.version = version
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.supersededBy = supersededBy
+        self.needsReview = needsReview
+    }
 }

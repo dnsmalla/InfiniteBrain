@@ -36,6 +36,7 @@ enum NoteSerializer {
         } else {
             fm += "superseded_by: null\n"
         }
+        fm += "needs_review: \(note.needsReview)\n"
         fm += "---\n\n"
         return fm + note.body + (note.body.hasSuffix("\n") ? "" : "\n")
     }
@@ -65,6 +66,7 @@ enum NoteSerializer {
         var sources: [String] = []
         var edges: [Edge] = []
         var supersededBy: String?
+        var needsReview: Bool = false
 
         var i = 0
         while i < fmLines.count {
@@ -88,6 +90,8 @@ enum NoteSerializer {
                 case "superseded_by":
                     let v = unquote(value)
                     supersededBy = (v == "null" || v.isEmpty) ? nil : v
+                case "needs_review":
+                    needsReview = (unquote(value).lowercased() == "true")
                 case "edges":
                     if value == "[]" { edges = [] }
                     else {
@@ -120,7 +124,8 @@ enum NoteSerializer {
             version: version,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            supersededBy: supersededBy
+            supersededBy: supersededBy,
+            needsReview: needsReview
         )
     }
 

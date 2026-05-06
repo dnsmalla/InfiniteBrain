@@ -27,6 +27,7 @@ public actor Orchestrator {
     public let embeddings: EmbeddingProvider?
     public let index: EmbeddingIndex?
     public let candidateK: Int
+    public let confidenceThreshold: Float
 
     public init(
         skillRunner: SkillRunner,
@@ -34,7 +35,8 @@ public actor Orchestrator {
         dateProvider: DateProvider = SystemDateProvider(),
         embeddings: EmbeddingProvider? = nil,
         index: EmbeddingIndex? = nil,
-        candidateK: Int = 5
+        candidateK: Int = 5,
+        confidenceThreshold: Float = 0.7
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
@@ -42,15 +44,36 @@ public actor Orchestrator {
         self.embeddings = embeddings
         self.index = index
         self.candidateK = candidateK
+        self.confidenceThreshold = confidenceThreshold
     }
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
         let store = VaultStore(vault: vault)
         let text = try Self.readText(from: file)
 
+        // Emit a `source` note for the file so every produced note can cite it.
+        let now = dateProvider.now()
+        let sourceNote = Note(
+            id: idGenerator.next(),
+            type: .source,
+            title: file.lastPathComponent,
+            summary: "Original source: \(file.lastPathComponent).",
+            body: "Path: \(file.path)",
+            edges: [],
+            sources: [],
+            contentHash: Self.hash(text),
+            version: 1,
+            createdAt: now,
+            updatedAt: now
+        )
+        try await store.write(sourceNote)
+        if let embeddings, let index, let v = try? await embeddings.embed(text) {
+            await index.record(id: sourceNote.id, vector: v)
+        }
+
         let atomized = try await skillRunner.run(
             "atomize-text",
-            input: ["text": text, "source_id": file.lastPathComponent]
+            input: ["text": text, "source_id": sourceNote.id]
         )
         let units = (atomized["units"] as? [[String: Any]]) ?? []
 
@@ -65,7 +88,11 @@ public actor Orchestrator {
                 input: ["unit_title": title, "unit_body": body]
             )
             let typeRaw = (classified["type"] as? String) ?? "note"
-            let type = NodeType(rawValue: typeRaw) ?? .note
+            let confidence = Self.numberValue(classified["confidence"])
+
+            // quality-bar.mdc: low-confidence → reroute to `custom` and flag.
+            let lowConfidence = confidence < confidenceThreshold
+            let type = lowConfidence ? .custom : (NodeType(rawValue: typeRaw) ?? .note)
 
             let summarized = try await skillRunner.run(
                 "summarize-note",
@@ -134,23 +161,23 @@ public actor Orchestrator {
                 result.improved += 1
 
             default:  // add
-                let now = dateProvider.now()
+                let writeNow = dateProvider.now()
                 var note = Note(
                     id: idGenerator.next(),
                     type: type,
                     title: title,
                     summary: summary,
                     body: body,
-                    edges: [],
-                    sources: [],
+                    edges: [Edge(type: .derivedFrom, target: sourceNote.id, evidence: "extracted from \(file.lastPathComponent)")],
+                    sources: [sourceNote.id],
                     contentHash: Self.hash(body),
                     version: 1,
-                    createdAt: now,
-                    updatedAt: now,
-                    supersededBy: nil
+                    createdAt: writeNow,
+                    updatedAt: writeNow,
+                    needsReview: lowConfidence
                 )
 
-                if !nearest.isEmpty || true {  // run edge inference whenever a candidate set exists OR for v1 always (skill self-limits)
+                if !nearest.isEmpty {
                     let inferred = (try? await skillRunner.run(
                         "infer-edges",
                         input: [
@@ -161,7 +188,7 @@ public actor Orchestrator {
                             "candidates": nearest,
                         ]
                     )) ?? [:]
-                    note.edges = Self.parseEdges(from: inferred)
+                    note.edges.append(contentsOf: Self.parseEdges(from: inferred))
                 }
 
                 try await store.write(note)
@@ -172,7 +199,10 @@ public actor Orchestrator {
             }
         }
 
-        if let index { try? await index.flush() }
+        if let index {
+            do { try await index.flush() }
+            catch { /* logged by caller via IngestViewModel; index reload re-derives from notes */ }
+        }
         return result
     }
 
@@ -199,6 +229,14 @@ public actor Orchestrator {
             let evidence = dict["evidence"] as? String
             return Edge(type: type, target: target, evidence: evidence)
         }
+    }
+
+    private static func numberValue(_ any: Any?) -> Float {
+        if let d = any as? Double { return Float(d) }
+        if let f = any as? Float { return f }
+        if let i = any as? Int { return Float(i) }
+        if let n = any as? NSNumber { return n.floatValue }
+        return 0
     }
 
     private static func hash(_ s: String) -> String {
