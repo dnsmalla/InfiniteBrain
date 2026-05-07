@@ -1,39 +1,32 @@
 import Foundation
 
-/// Per-file ingest checkpoint. Captures everything needed to resume an
-/// in-progress ingest after a crash without re-running atomize-text or
-/// re-assigning ids.
+/// Per-file ingest progress record. Tracks which chunks have been fully
+/// processed (atomized → decided → written). Lets a re-run after a Stop
+/// click or a crash pick up only the missing chunks.
 public struct Checkpoint: Codable, Sendable, Equatable {
-    public struct Unit: Codable, Sendable, Equatable {
-        public let title: String
-        public let body: String
-        public let lineCount: Int?
-        public let suggestedTypeHint: String?
-
-        public init(title: String, body: String, lineCount: Int?, suggestedTypeHint: String?) {
-            self.title = title
-            self.body = body
-            self.lineCount = lineCount
-            self.suggestedTypeHint = suggestedTypeHint
-        }
-    }
-
     public let fileHash: String
     public let sourceId: String
-    public let units: [Unit]
-    public let reservedIds: [String]
-    public var completedThrough: Int   // number of units fully applied
+    public var chunkCount: Int
+    public var completedChunks: Set<Int>
 
-    public init(fileHash: String, sourceId: String, units: [Unit], reservedIds: [String], completedThrough: Int) {
+    public init(fileHash: String, sourceId: String, chunkCount: Int, completedChunks: Set<Int> = []) {
         self.fileHash = fileHash
         self.sourceId = sourceId
-        self.units = units
-        self.reservedIds = reservedIds
-        self.completedThrough = completedThrough
+        self.chunkCount = chunkCount
+        self.completedChunks = completedChunks
+    }
+
+    public var isComplete: Bool {
+        chunkCount > 0 && completedChunks.count == chunkCount
+    }
+
+    public var pendingChunkIndices: [Int] {
+        (0..<chunkCount).filter { !completedChunks.contains($0) }
     }
 }
 
 /// Reads/writes Checkpoint values to `<vault>/.infinitebrain/checkpoints/`.
+/// Atomic writes per save so a crash mid-write can't corrupt the record.
 public actor CheckpointStore {
     public let vault: Vault
     public init(vault: Vault) { self.vault = vault }
@@ -42,7 +35,7 @@ public actor CheckpointStore {
         let url = path(for: fileHash)
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(Checkpoint.self, from: data)
+        return try? JSONDecoder().decode(Checkpoint.self, from: data)
     }
 
     public func save(_ checkpoint: Checkpoint) async throws {
@@ -50,6 +43,15 @@ public actor CheckpointStore {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(checkpoint)
         try data.write(to: path(for: checkpoint.fileHash), options: .atomic)
+    }
+
+    /// Mark a chunk index as complete and persist atomically. Returns the
+    /// updated checkpoint.
+    public func markChunkComplete(fileHash: String, chunkIndex: Int) async throws -> Checkpoint? {
+        guard var current = try await load(fileHash: fileHash) else { return nil }
+        current.completedChunks.insert(chunkIndex)
+        try await save(current)
+        return current
     }
 
     public func delete(fileHash: String) async throws {

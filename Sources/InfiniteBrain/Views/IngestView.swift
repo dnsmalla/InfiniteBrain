@@ -80,15 +80,19 @@ struct IngestView: View {
     private var controls: some View {
         HStack(spacing: 10) {
             Button {
-                Task { await ingest.run(settings: settings) }
+                ingest.toggle(settings: settings)
             } label: {
-                Label(ingest.isRunning ? "Running…" : "Run", systemImage: "play.fill")
-                    .frame(minWidth: 80)
+                if ingest.isRunning {
+                    Label("Stop", systemImage: "stop.fill").frame(minWidth: 80)
+                } else {
+                    Label("Run", systemImage: "play.fill").frame(minWidth: 80)
+                }
             }
             .keyboardShortcut(.return, modifiers: [.command])
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(ingest.isRunning || ingest.droppedFiles.isEmpty)
+            .tint(ingest.isRunning ? .red : .accentColor)
+            .disabled(!ingest.isRunning && ingest.droppedFiles.isEmpty)
 
             Button("Clear", role: .destructive) { ingest.clear() }
                 .disabled(ingest.isRunning)

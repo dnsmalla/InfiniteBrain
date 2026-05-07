@@ -9,6 +9,10 @@ public final class IngestViewModel: ObservableObject {
     @Published public var isRunning: Bool = false
     @Published public var lastResult: IngestResult?
 
+    /// Holds the currently-running ingest Task so the Stop button can
+    /// cancel it. `nil` when no run is in flight.
+    private var runTask: Task<Void, Never>?
+
     public init() {}
 
     public func add(_ urls: [URL]) {
@@ -21,6 +25,24 @@ public final class IngestViewModel: ObservableObject {
         droppedFiles.removeAll()
         log.removeAll()
         lastResult = nil
+    }
+
+    /// Start a run, or cancel the in-flight one if there already is one.
+    /// The Run/Stop button calls this. Cancellation propagates through the
+    /// Orchestrator's TaskGroup; chunks that have already finished stay in
+    /// the vault, the checkpoint records what's done, and a future Run
+    /// will resume from there.
+    public func toggle(settings: AppSettings) {
+        if let existing = runTask {
+            existing.cancel()
+            append("⏹ stop requested — finishing in-flight subtasks…")
+            runTask = nil
+            return
+        }
+        runTask = Task { [weak self] in
+            await self?.run(settings: settings)
+            self?.runTask = nil
+        }
     }
 
     public func run(settings: AppSettings) async {

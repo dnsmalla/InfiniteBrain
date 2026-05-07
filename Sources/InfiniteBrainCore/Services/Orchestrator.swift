@@ -85,65 +85,98 @@ public actor Orchestrator {
         let text = try Self.readText(from: file)
         let fileHash = Self.hash(text)
 
-        // Short-circuit logic for re-ingest:
-        //   - In-flight checkpoint?  → resume below.
-        //   - No source with this hash?  → fresh ingest.
-        //   - Source AND ≥1 atomic note citing it?  → fully done, skip.
-        //   - Source but NO atomic notes citing it?  → orphaned source from a
-        //     previous failed ingest. Delete the orphan and proceed fresh
-        //     (otherwise we'd skip forever and the user could never recover).
-        let inFlight = (try? await checkpoints.load(fileHash: fileHash)) != nil
-        if !inFlight {
+        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+        let total = chunks.count
+
+        // Re-ingest logic:
+        //   - Checkpoint exists AND complete  → fully done, skip.
+        //   - Checkpoint exists AND incomplete → resume only missing chunks.
+        //   - No checkpoint, source matches    → orphan → delete source, fresh.
+        //   - No checkpoint, no source         → fresh.
+        let existingCheckpoint = (try? await checkpoints.load(fileHash: fileHash)) ?? nil
+        let pendingIndices: [Int]
+        let sourceNote: Note
+        let isResume: Bool
+
+        if let cp = existingCheckpoint, cp.chunkCount == total {
+            if cp.isComplete {
+                await progress("already fully ingested (\(cp.chunkCount) chunks). skipping.")
+                return IngestResult(skipped: 1)
+            }
+            // Resume: source note must already be in the vault.
+            let resumed: Note
+            do { resumed = try await store.read(id: cp.sourceId) }
+            catch {
+                // Source somehow missing — treat as fresh.
+                try? await checkpoints.delete(fileHash: fileHash)
+                return try await ingest(file: file, into: vault)  // recurse once with clean state
+            }
+            sourceNote = resumed
+            pendingIndices = cp.pendingChunkIndices
+            isResume = true
+            await progress("resuming previous ingest — \(pendingIndices.count) of \(cp.chunkCount) chunk(s) still to do")
+        } else {
+            // Fresh: drop any stale checkpoint, clean up orphan source if any.
+            if existingCheckpoint != nil {
+                try? await checkpoints.delete(fileHash: fileHash)
+            }
             let existing = (try? await store.allNotes()) ?? []
             if let prior = existing.first(where: { $0.type == .source && $0.contentHash == fileHash }) {
-                let cited = existing.contains { $0.type != .source && $0.sources.contains(prior.id) }
-                if cited {
-                    return IngestResult(skipped: 1)
-                }
-                // Orphan — clean up so the fresh ingest doesn't leave
-                // duplicate source notes behind.
                 try? await store.delete(id: prior.id)
                 await progress("found incomplete previous ingest, re-running")
             }
+            // Write fresh source note.
+            let now = dateProvider.now()
+            sourceNote = Note(
+                id: idGenerator.next(),
+                type: .source,
+                title: file.lastPathComponent,
+                summary: "Original source: \(file.lastPathComponent).",
+                body: "Path: \(file.path)",
+                edges: [],
+                sources: [],
+                contentHash: fileHash,
+                version: 1,
+                createdAt: now,
+                updatedAt: now
+            )
+            try await store.write(sourceNote)
+            if let embeddings, let index {
+                let preview = "\(file.lastPathComponent): \(text.prefix(400))"
+                if let v = try? await embeddings.embed(preview) {
+                    await index.record(id: sourceNote.id, vector: v)
+                }
+            }
+            // Initial empty checkpoint so we can mark chunks as they complete.
+            try? await checkpoints.save(Checkpoint(
+                fileHash: fileHash,
+                sourceId: sourceNote.id,
+                chunkCount: total,
+                completedChunks: []
+            ))
+            pendingIndices = Array(0..<total)
+            isResume = false
         }
 
-        // Streaming pipeline: write source note up-front, then per-chunk
-        // atomize → decide-each-unit → write-immediately. Multiple chunks
-        // run in parallel up to `concurrency`. Notes appear in the vault as
-        // chunks finish, instead of all at the end.
-        let now = dateProvider.now()
-        let sourceNote = Note(
-            id: idGenerator.next(),
-            type: .source,
-            title: file.lastPathComponent,
-            summary: "Original source: \(file.lastPathComponent).",
-            body: "Path: \(file.path)",
-            edges: [],
-            sources: [],
-            contentHash: fileHash,
-            version: 1,
-            createdAt: now,
-            updatedAt: now
-        )
-        try await store.write(sourceNote)
-        if let embeddings, let index {
-            let preview = "\(file.lastPathComponent): \(text.prefix(400))"
-            if let v = try? await embeddings.embed(preview) {
-                await index.record(id: sourceNote.id, vector: v)
-            }
-        }
         let sourceId = sourceNote.id
         let label = file.lastPathComponent
 
-        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
-        let total = chunks.count
-        await progress("split into \(total) chunk(s) — pipelining up to \(concurrency) at once")
+        if isResume {
+            await progress("split into \(total) chunk(s) — \(pendingIndices.count) pending, pipelining up to \(concurrency) at once")
+        } else {
+            await progress("split into \(total) chunk(s) — pipelining up to \(concurrency) at once")
+        }
 
-        // Per-chunk pipeline: atomize → for each unit: decide → write.
+        // Per-chunk pipeline: atomize → for each unit: decide → write →
+        // mark chunk done in the checkpoint.
         @Sendable func processChunk(_ i: Int) async -> IngestResult {
+            // Cancellation check before doing any LLM work.
+            if Task.isCancelled { return IngestResult() }
+
             // Atomize with one retry.
             var atomized: [[String: Any]] = []
             for attempt in 0..<2 {
+                if Task.isCancelled { return IngestResult() }
                 do {
                     let r = try await skillRunner.run("atomize-text", input: [
                         "text": chunks[i], "source_id": sourceId,
@@ -152,6 +185,8 @@ public actor Orchestrator {
                     atomized = (r["units"] as? [[String: Any]]) ?? []
                     await progress("chunk \(i + 1)/\(total): atomized → \(atomized.count) unit(s)")
                     break
+                } catch is CancellationError {
+                    return IngestResult()
                 } catch {
                     if attempt == 0 {
                         try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -163,10 +198,10 @@ public actor Orchestrator {
                 }
             }
 
-            // Decide + write each unit. Serial within a chunk so the user sees
-            // notes accrue at a steady pace.
+            // Decide + write each unit. Serial within a chunk.
             var local = IngestResult()
             for (j, unit) in atomized.enumerated() {
+                if Task.isCancelled { return local }
                 let reservedId = idGenerator.next()
                 let outcome: UnitOutcome
                 do {
@@ -174,6 +209,8 @@ public actor Orchestrator {
                         unit: unit, reservedId: reservedId,
                         sourceId: sourceId, sourceLabel: label, store: store
                     )
+                } catch is CancellationError {
+                    return local
                 } catch {
                     await progress("chunk \(i + 1)/\(total) unit \(j + 1)/\(atomized.count): \(Self.brief(error))")
                     local.quarantined += 1
@@ -193,29 +230,28 @@ public actor Orchestrator {
                     local.added += 1
                 }
             }
+            // Mark this chunk as complete in the checkpoint so a future
+            // re-run won't redo it.
+            _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
             await progress("chunk \(i + 1)/\(total) done: +\(local.added) added, \(local.improved) improved, \(local.skipped) skipped")
             return local
         }
 
-        // Keep `checkpoints` referenced so unused-variable warnings stay quiet
-        // while the streaming version forgoes mid-run resume. The orphan
-        // detect above already handles "previous ingest never completed".
-        _ = checkpoints
-
         var result = IngestResult()
         await withTaskGroup(of: IngestResult.self) { group in
-            var nextSubmit = 0
-            for _ in 0..<min(concurrency, total) {
-                let i = nextSubmit; nextSubmit += 1
-                group.addTask { await processChunk(i) }
+            var queue = pendingIndices.makeIterator()
+            // Prime up to `concurrency` tasks.
+            for _ in 0..<concurrency {
+                if let i = queue.next() {
+                    group.addTask { await processChunk(i) }
+                }
             }
             while let r = await group.next() {
                 result.added += r.added
                 result.improved += r.improved
                 result.skipped += r.skipped
                 result.quarantined += r.quarantined
-                if nextSubmit < total {
-                    let i = nextSubmit; nextSubmit += 1
+                if let i = queue.next(), !Task.isCancelled {
                     group.addTask { await processChunk(i) }
                 }
             }
@@ -224,6 +260,23 @@ public actor Orchestrator {
         if let index {
             do { try await index.flush() }
             catch { /* index is rebuildable from the markdown */ }
+        }
+
+        // Keep the checkpoint either way:
+        //   - Fully complete (all chunks marked) → re-ingest sees isComplete
+        //     and short-circuits with skipped=1.
+        //   - Cancelled or partial → completedChunks reflects what's done,
+        //     re-ingest resumes the missing indices.
+        let final = (try? await checkpoints.load(fileHash: fileHash)) ?? nil
+        if let final, final.isComplete {
+            await progress("ingest complete — \(final.chunkCount)/\(final.chunkCount) chunk(s)")
+        } else if Task.isCancelled {
+            await progress("cancelled — \((final?.completedChunks.count ?? 0))/\(total) chunk(s) saved; re-run to resume")
+        } else if let final {
+            let pending = total - final.completedChunks.count
+            if pending > 0 {
+                await progress("\(pending) chunk(s) didn't complete — re-run to retry")
+            }
         }
         return result
     }

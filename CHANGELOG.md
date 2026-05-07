@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.17.0] — 2026-05-07
+
+Two requested features.
+
+Stop button
+- Run button flips to a red "Stop" while an ingest is running.
+  Clicking it cancels the in-flight Task. Atomic notes already
+  written stay in the vault, the checkpoint records what's done,
+  and a future Run resumes from the missing chunks.
+- Orchestrator checks Task.isCancelled at chunk + unit boundaries
+  and bails before submitting another LLM call. CancellationError
+  thrown by an in-flight skill call is caught cleanly, no retry,
+  no log noise.
+
+Per-chunk resume of incomplete ingests
+- Checkpoint schema redesigned: `completedChunks: Set<Int>`
+  instead of a contiguous `completedThrough` index, because
+  streaming chunks can finish out of order.
+- Checkpoint is now persisted across runs (not deleted on success):
+  - isComplete=true (all chunks done) → re-ingest skips with
+    `IngestResult.skipped = 1`.
+  - isComplete=false (some pending) → re-ingest atomizes only the
+    missing chunks. Source note + already-written atomic notes
+    are kept; pending chunks pick up from where they stopped.
+- Each chunk task atomically updates the checkpoint via
+  `markChunkComplete` after its writes land.
+- Orphan detect (source exists but no checkpoint) still cleans up
+  and re-runs fresh — covers vaults from before this version.
+
+Tests: 37 InfiniteBrain (+1 in CheckpointStore for the new
+markChunkComplete + isComplete logic) + 30 SharedLLMKit = 67.
+
 ## [0.16.0] — 2026-05-07
 
 Per-source folder layout + skip-boilerplate rule.
