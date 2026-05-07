@@ -70,14 +70,14 @@ final class OrchestratorTests: XCTestCase {
         XCTAssertEqual(result.added, 0)
         XCTAssertEqual(result.skipped, 1)
 
-        // The source note is always written; only atomic notes are skipped.
-        let typeDirs = (try? FileManager.default.contentsOfDirectory(at: vault.notesRoot, includingPropertiesForKeys: nil)) ?? []
-        let nonSourceFiles = typeDirs
-            .filter { $0.lastPathComponent != "source" }
-            .flatMap { (try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)) ?? [] }
-        XCTAssertTrue(nonSourceFiles.isEmpty, "no atomic note files should be written on skip")
-        let sourceFiles = (try? FileManager.default.contentsOfDirectory(at: vault.notesRoot.appendingPathComponent("source"), includingPropertiesForKeys: nil)) ?? []
-        XCTAssertEqual(sourceFiles.count, 1, "source note must be written even when atomic units are skipped")
+        // Source note is always written; only atomic units are skipped.
+        // Layout-agnostic check via VaultStore.
+        let store = VaultStore(vault: vault)
+        let all = try await store.allNotes()
+        let sources = all.filter { $0.type == .source }
+        let atomic = all.filter { $0.type != .source }
+        XCTAssertEqual(sources.count, 1, "source note must be written even when atomic units are skipped")
+        XCTAssertTrue(atomic.isEmpty, "no atomic notes should be written on skip")
     }
 
 }

@@ -6,8 +6,18 @@ public enum VaultStoreError: Error, Equatable {
 }
 
 /// Reads and writes notes as Obsidian-compatible markdown files with YAML
-/// frontmatter. The vault is the source of truth; the sidecar SQLite index is
-/// a rebuildable cache.
+/// frontmatter. The vault is the source of truth; the sidecar SQLite index
+/// is a rebuildable cache.
+///
+/// Layout:
+///   notes/<source-slug>/<type>/<id>--<slug>.md
+/// Source notes use their own slugified title for the source-slug folder;
+/// every atomic note created from that source goes into the same folder
+/// (resolved via Note.sources[0]).
+///
+/// Notes with no source AND that aren't themselves a source land in the
+/// legacy top-level type folder so older vaults still round-trip:
+///   notes/<type>/<id>--<slug>.md
 public actor VaultStore {
     public let vault: Vault
 
@@ -16,7 +26,7 @@ public actor VaultStore {
     }
 
     public func write(_ note: Note) async throws {
-        let dir = vault.notesRoot.appendingPathComponent(note.type.rawValue, isDirectory: true)
+        let dir = try await directory(for: note)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(Self.fileName(for: note))
         let serialized = NoteSerializer.serialize(note)
@@ -38,23 +48,21 @@ public actor VaultStore {
         try FileManager.default.removeItem(at: url)
     }
 
-    /// Returns every note in the vault, parsed. Walks `<vault>/notes/<type>/`
-    /// and silently skips files that fail to parse so a single corrupted
-    /// note can't take down the whole listing.
+    /// Returns every note in the vault. Walks the entire `notes/` tree
+    /// recursively so it picks up both per-source layouts and any
+    /// legacy-layout notes still on disk. Silently skips files that fail
+    /// to parse — a single corrupted note can't take down the listing.
     public func allNotes() async throws -> [Note] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: vault.notesRoot.path) else { return [] }
         var out: [Note] = []
-        let typeDirs = try fm.contentsOfDirectory(at: vault.notesRoot, includingPropertiesForKeys: [.isDirectoryKey])
-        for dir in typeDirs {
-            guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
-            let files = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            for f in files where f.pathExtension == "md" {
-                guard let content = try? String(contentsOf: f, encoding: .utf8),
-                      let note = try? NoteSerializer.parse(content)
-                else { continue }
-                out.append(note)
-            }
+        let enumerator = fm.enumerator(at: vault.notesRoot, includingPropertiesForKeys: [.isRegularFileKey])
+        while let url = enumerator?.nextObject() as? URL {
+            guard url.pathExtension == "md" else { continue }
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
+            guard let content = try? String(contentsOf: url, encoding: .utf8),
+                  let note = try? NoteSerializer.parse(content) else { continue }
+            out.append(note)
         }
         return out
     }
@@ -75,15 +83,44 @@ public actor VaultStore {
         return collapsed
     }
 
+    /// Where to write the given note. Source notes own their folder name;
+    /// atomic notes inherit it from `sources[0]`. Falls back to legacy
+    /// `notes/<type>/` when no source can be resolved.
+    private func directory(for note: Note) async throws -> URL {
+        if note.type == .source {
+            let folder = Self.slugify(note.title)
+            return vault.notesRoot
+                .appendingPathComponent(folder, isDirectory: true)
+                .appendingPathComponent(note.type.rawValue, isDirectory: true)
+        }
+        if let sourceId = note.sources.first,
+           let sourceNote = try? await readWithoutAutoCreate(id: sourceId) {
+            let folder = Self.slugify(sourceNote.title)
+            return vault.notesRoot
+                .appendingPathComponent(folder, isDirectory: true)
+                .appendingPathComponent(note.type.rawValue, isDirectory: true)
+        }
+        // Legacy layout for notes without a resolvable source.
+        return vault.notesRoot.appendingPathComponent(note.type.rawValue, isDirectory: true)
+    }
+
+    /// Read a note by id without creating directories along the way.
+    /// Used internally by `directory(for:)` to avoid recursive write loops.
+    private func readWithoutAutoCreate(id: String) async throws -> Note? {
+        guard let url = try locateFile(forId: id) else { return nil }
+        let content = try String(contentsOf: url, encoding: .utf8)
+        return try NoteSerializer.parse(content)
+    }
+
+    /// Recursive walk of `<vault>/notes/` looking for `<id>--*.md`.
+    /// Handles both new (per-source) and legacy layouts.
     private func locateFile(forId id: String) throws -> URL? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: vault.notesRoot.path) else { return nil }
-        let typeDirs = try fm.contentsOfDirectory(at: vault.notesRoot, includingPropertiesForKeys: nil)
-        for dir in typeDirs {
-            guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
-            let files = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-            for f in files where f.lastPathComponent.hasPrefix("\(id)--") && f.pathExtension == "md" {
-                return f
+        let enumerator = fm.enumerator(at: vault.notesRoot, includingPropertiesForKeys: nil)
+        while let url = enumerator?.nextObject() as? URL {
+            if url.lastPathComponent.hasPrefix("\(id)--") && url.pathExtension == "md" {
+                return url
             }
         }
         return nil

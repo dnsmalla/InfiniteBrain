@@ -35,6 +35,24 @@ infer cross-chunk structure; just emit good atomic units for what you see.
 5. Preserve quotations verbatim; do not paraphrase quoted material.
 6. Strip page numbers, headers/footers, and OCR artefacts.
 
+# Skip these — return zero units
+
+If the entire chunk consists of any of the following, return
+`{ "units": [] }`. These produce noise, not knowledge:
+
+- Front matter: copyright page, ISBN page, dedication, foreword that
+  isn't substantive.
+- Table of contents, list of figures, list of tables.
+- Index, glossary entries that are just term→page lookups.
+- Acknowledgments that thank specific people without conveying ideas.
+- References / bibliography list — these are pointers, not facts.
+- Boilerplate legal text, "all rights reserved", licensing notices.
+- Page-number-only content, running headers, stray OCR artefacts.
+
+If a chunk is *partly* boilerplate and partly substantive, emit units
+only for the substantive parts. Don't include the boilerplate in any
+unit's body.
+
 # Output
 
 Return a JSON object: `{ "units": [{ "title": str, "body": str, "line_count":

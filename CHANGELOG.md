@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.16.0] — 2026-05-07
+
+Per-source folder layout + skip-boilerplate rule.
+
+Folder layout
+- Was: `notes/<type>/<id>--<slug>.md`. Two PDFs each producing 200 notes
+  meant 400 mixed files in `notes/decision/`, hard to tell which book a
+  note came from.
+- Now: `notes/<source-slug>/<type>/<id>--<slug>.md`. Every note from a
+  given input file lives under that file's slugified-name folder, with
+  type still as a subfolder so the per-book Obsidian view groups
+  cleanly.
+- Source notes go in `notes/<source-slug>/source/<id>--<slug>.md`.
+- Backwards compatible: notes without a resolvable source land in the
+  legacy top-level type folder, and the recursive locate/allNotes walk
+  finds notes regardless of which layout they're in.
+
+Skip boilerplate
+- atomize-text SKILL.md gains an explicit "skip these — return zero
+  units" rule listing TOC, index, acknowledgments, copyright, references,
+  legal boilerplate, OCR artefacts. Partly-boilerplate chunks emit
+  units for the substantive parts only.
+
+Tests still 66 green (added PerSourceFolderTests; updated
+OrchestratorTests to walk the new layout via VaultStore.allNotes).
+
 ## [0.15.0] — 2026-05-07
 
 Streaming ingest pipeline. Notes now appear in the vault as the run
