@@ -20,7 +20,26 @@ public final class AppSettings: ObservableObject, @unchecked Sendable {
         self.defaults = defaults
         self.keychain = keychain
         self.vaultPathStorage = defaults.string(forKey: Self.vaultPathKey)
-        self.providerRaw = defaults.string(forKey: Self.providerKey) ?? LLMProviderKind.anthropic.rawValue
+        if let saved = defaults.string(forKey: Self.providerKey) {
+            self.providerRaw = saved
+        } else {
+            // First-run default: prefer an installed CLI over Anthropic API,
+            // so users with `claude` installed don't have to add an API key
+            // before they can do anything.
+            self.providerRaw = Self.bestAvailableProvider(keychain: keychain).rawValue
+        }
+    }
+
+    private static func bestAvailableProvider(keychain: KeychainStore) -> LLMProviderKind {
+        // If a key is already in the keychain, default to the cloud API.
+        if let key = (try? keychain.get(apiKeyKey)) ?? nil, !key.isEmpty {
+            return .anthropic
+        }
+        // Otherwise pick the first locally-installed CLI, in preference order.
+        for kind in [LLMProviderKind.claudeCLI, .codexCLI, .cursorCLI] {
+            if LLMClientFactory.isAvailable(kind, apiKey: nil) { return kind }
+        }
+        return .anthropic
     }
 
     public var vaultPath: URL? {

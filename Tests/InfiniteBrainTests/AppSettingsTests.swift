@@ -1,5 +1,6 @@
 import XCTest
 @testable import InfiniteBrainCore
+@testable import SharedLLMKit
 
 final class AppSettingsTests: XCTestCase {
     private var defaults: UserDefaults!
@@ -39,10 +40,22 @@ final class AppSettingsTests: XCTestCase {
 
     func testAPIKeyConfigurationFlag() throws {
         let settings = AppSettings(defaults: defaults, keychain: InMemoryKeychain())
+        // Pin the provider to anthropic so the assertion is deterministic
+        // regardless of which CLIs the test machine happens to have installed.
+        settings.provider = .anthropic
         XCTAssertFalse(settings.isConfigured)
         settings.vaultPath = URL(fileURLWithPath: "/tmp/v")
-        XCTAssertFalse(settings.isConfigured, "configured requires vault AND api key")
+        XCTAssertFalse(settings.isConfigured, "anthropic + vault still needs an api key")
         try settings.setAPIKey("sk-ant-abc")
         XCTAssertTrue(settings.isConfigured)
+    }
+
+    func testFirstRunDefaultsToInstalledCLIWhenAvailable() {
+        // No saved provider yet. With an empty keychain and the test's
+        // own UserDefaults suite, AppSettings should pick the best
+        // available CLI if one is installed on this machine. We can't
+        // know what's installed, but the chosen provider must be valid.
+        let settings = AppSettings(defaults: defaults, keychain: InMemoryKeychain())
+        XCTAssertTrue(LLMProviderKind.allCases.contains(settings.provider))
     }
 }

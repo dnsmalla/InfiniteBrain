@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.14.1] — 2026-05-07
+
+UX fixes around provider selection.
+
+- First-run default now picks the best available LLM backend instead of
+  blindly defaulting to the Anthropic API. Order: existing API key in
+  Keychain → Claude Code CLI → Codex CLI → Cursor CLI → Anthropic. So a
+  user with `claude` installed and no API key can hit Run immediately
+  without visiting Settings first.
+- The "needs an API key" error now lists the locally-installed CLI
+  alternatives the user could switch to in Settings.
+- Added a regression test that asserts AppSettings always returns a
+  valid `LLMProviderKind` from a clean keychain + defaults state.
+
 ## [0.14.0] — 2026-05-07
 
 UI polish — the app looks like a real macOS app now, not a quick demo.

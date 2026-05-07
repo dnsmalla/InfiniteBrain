@@ -39,10 +39,18 @@ public final class IngestViewModel: ObservableObject {
         do {
             client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey)
         } catch LLMClientFactory.FactoryError.missingAPIKey {
-            append("Anthropic provider needs an API key — add one in Settings or switch to a CLI provider.")
+            let alts = LLMProviderKind.allCases
+                .filter { $0 != .anthropic }
+                .filter { LLMClientFactory.isAvailable($0, apiKey: nil) }
+                .map { "“\($0.displayName)”" }
+            if alts.isEmpty {
+                append("Anthropic provider needs an API key. Add one in the Settings tab.")
+            } else {
+                append("Anthropic provider needs an API key. Either add one in Settings, or switch the LLM provider there to \(alts.joined(separator: " / ")).")
+            }
             return
         } catch CLIClientError.executableNotFound(let name) {
-            append("`\(name)` CLI not found on PATH. Install it or pick a different provider.")
+            append("`\(name)` CLI is not on your PATH. Install it or change the provider in Settings.")
             return
         } catch {
             append("provider error: \(error.localizedDescription)")
