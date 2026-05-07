@@ -131,7 +131,7 @@ struct HelpView: View {
         VStack(alignment: .leading, spacing: 14) {
             heading("How Ingest Works")
             bulletList([
-                "Read the file. PDFs go through PDFKit; pages with empty text fall back to Vision OCR automatically.",
+                "Read the file. PDFs go through PDFKit (with Vision OCR fallback for scanned pages). EPUBs are unzipped and the spine's XHTML chapters are stripped to plain text. Markdown and .txt are read verbatim.",
                 "Compute a SHA-256 of the content. Used as the dedup key.",
                 "Write the Source note. Inherits the file name as folder name under notes/.",
                 "Split text into chunks (default 16k chars). Per-chunk parallel pipeline begins.",

@@ -407,17 +407,11 @@ public actor Orchestrator {
     // MARK: - Helpers
 
     private func readText(from url: URL) async throws -> String {
-        switch url.pathExtension.lowercased() {
-        case "pdf":
-            let pages = try PDFExtractor().extract(url)
-            let ocred = pages.filter(\.usedOCR).count
-            if ocred > 0 {
-                await progress("OCR'd \(ocred) of \(pages.count) page(s) from \(url.lastPathComponent)")
-            }
-            return pages.map(\.text).joined(separator: "\n\n")
-        default:
-            return try String(contentsOf: url, encoding: .utf8)
+        let result = try InputReader.read(url)
+        if result.ocrPages > 0 {
+            await progress("OCR'd \(result.ocrPages) of \(result.totalPages) page(s) from \(url.lastPathComponent)")
         }
+        return result.text
     }
 
     private static func parseEdges(from inferred: [String: Any]) -> [Edge] {

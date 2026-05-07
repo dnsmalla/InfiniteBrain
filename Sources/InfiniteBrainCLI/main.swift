@@ -169,14 +169,7 @@ struct InfiniteBrainCLI {
         let cps = CheckpointStore(vault: vault)
         for f in files {
             let url = URL(fileURLWithPath: f)
-            let text: String
-            do {
-                let pages = try PDFExtractor().extract(url)
-                text = pages.map(\.text).joined(separator: "\n\n")
-            } catch {
-                guard let s = try? String(contentsOf: url, encoding: .utf8) else { continue }
-                text = s
-            }
+            guard let text = try? InputReader.read(url).text else { continue }
             let hash = "sha256-" + sha256Hex(text)
             let all = (try? await store.allNotes()) ?? []
             guard let prior = all.first(where: { $0.type == .source && $0.contentHash == hash }) else {

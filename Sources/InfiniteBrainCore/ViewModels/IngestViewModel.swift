@@ -66,14 +66,10 @@ public final class IngestViewModel: ObservableObject {
         for file in droppedFiles {
             let text: String
             do {
-                let pages = try PDFExtractor().extract(file)
-                text = pages.map(\.text).joined(separator: "\n\n")
+                text = try InputReader.read(file).text
             } catch {
-                guard let s = try? String(contentsOf: file, encoding: .utf8) else {
-                    append("could not read \(file.lastPathComponent)")
-                    continue
-                }
-                text = s
+                append("could not read \(file.lastPathComponent): \(error.localizedDescription)")
+                continue
             }
             let hash = Self.sha256Hex(text)
             let all = (try? await store.allNotes()) ?? []

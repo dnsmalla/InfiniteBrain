@@ -47,7 +47,7 @@ struct IngestView: View {
                     .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
                 Text("Drop files here")
                     .font(.headline)
-                Text("PDF · Markdown · Plain text")
+                Text("PDF · EPUB · Markdown · Plain text")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

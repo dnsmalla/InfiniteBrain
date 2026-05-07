@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.25.0] — 2026-05-07
+
+EPUB ingest support. User asked "does it work for .epub?" — no, it
+silently fell into the UTF-8 default path and produced binary noise.
+Now properly handled.
+
+- New `EPUBExtractor`: unzips the epub via `/usr/bin/unzip` to a temp
+  dir, parses `META-INF/container.xml` to find the OPF, walks the
+  spine in reading order, strips each XHTML chapter to plain text
+  (drops scripts/styles/comments, decodes named + numeric entities,
+  preserves paragraph breaks). Temp dir is cleaned up via defer.
+- New `InputReader.read(_:)` is the single dispatch point for all
+  formats — `.pdf` (PDFKit + Vision OCR), `.epub` (EPUBExtractor),
+  `.md` / `.txt` / fallback (UTF-8). Orchestrator, IngestViewModel
+  wipe, and CLI wipe all route through it so adding the next format
+  is one switch case.
+- IngestView drop-zone subtitle now reads "PDF · EPUB · Markdown ·
+  Plain text".
+- Help → How Ingest Works updated with the new EPUB step.
+
+Tests
+- New EPUBExtractorTests builds a minimal but spec-conformant EPUB
+  programmatically (mimetype-first store, then deflate the rest)
+  and asserts: chapter content extracted, scripts/styles dropped,
+  named entities decoded, decimal + hex numeric entities decoded
+  (including non-ASCII like `&#x4E2D;` → 中).
+- 41 InfiniteBrain (+3) + 30 SharedLLMKit = 71 green.
+
 ## [0.24.0] — 2026-05-07
 
 Removed the Schema tab — its content (16 nodes, 10 edges, with
