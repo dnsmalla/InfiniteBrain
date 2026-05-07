@@ -31,6 +31,13 @@ public actor VaultStore {
         return try NoteSerializer.parse(content)
     }
 
+    public func delete(id: String) async throws {
+        guard let url = try locateFile(forId: id) else {
+            throw VaultStoreError.notFound(id: id)
+        }
+        try FileManager.default.removeItem(at: url)
+    }
+
     /// Returns every note in the vault, parsed. Walks `<vault>/notes/<type>/`
     /// and silently skips files that fail to parse so a single corrupted
     /// note can't take down the whole listing.

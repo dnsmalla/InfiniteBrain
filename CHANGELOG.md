@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.14.5] — 2026-05-07
+
+Fix: dedup wrongly skipped re-ingest of an *orphaned* source.
+
+What the user saw: dropped a 1.7 MB book in, hit Run, got
+"added: 0  improved: 0  skipped: 1" — even though the vault contained
+a source note but ZERO atomic notes (the previous ingest had aborted
+mid-pipeline). The dedup short-circuit treated the orphan source as
+proof of completion and refused to re-run. Stuck forever.
+
+Fix
+- Dedup now checks both: (a) a source note with the right
+  content_hash exists, AND (b) at least one atomic note cites it via
+  `sources: [<source-id>]`. Only then short-circuit with skipped=1.
+- If (a) but not (b) — orphan from a failed run — delete the orphan
+  source and proceed with a fresh ingest. New `VaultStore.delete(id:)`
+  helper.
+- Logs "found incomplete previous ingest, re-running" so the user
+  understands what happened.
+
+Tests
+- New OrphanedSourceReingestTests plants an orphan source, runs ingest,
+  asserts re-run produces atomic notes and only one source remains
+  (the new one — orphan cleaned up).
+
+36 InfiniteBrain + 30 SharedLLMKit = 66 tests green.
+
 ## [0.14.4] — 2026-05-07
 
 Long-PDF resilience — a single failing API call no longer kills the

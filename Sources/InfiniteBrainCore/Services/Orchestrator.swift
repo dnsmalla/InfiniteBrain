@@ -85,16 +85,25 @@ public actor Orchestrator {
         let text = try Self.readText(from: file)
         let fileHash = Self.hash(text)
 
-        // Short-circuit: if a source note with this exact content_hash already
-        // lives in the vault AND no in-flight checkpoint exists, the same file
-        // has already been fully ingested — don't re-run the pipeline or
-        // create a duplicate source note. Returns IngestResult.skipped = 1
-        // so the caller can show "already ingested" to the user.
+        // Short-circuit logic for re-ingest:
+        //   - In-flight checkpoint?  → resume below.
+        //   - No source with this hash?  → fresh ingest.
+        //   - Source AND ≥1 atomic note citing it?  → fully done, skip.
+        //   - Source but NO atomic notes citing it?  → orphaned source from a
+        //     previous failed ingest. Delete the orphan and proceed fresh
+        //     (otherwise we'd skip forever and the user could never recover).
         let inFlight = (try? await checkpoints.load(fileHash: fileHash)) != nil
         if !inFlight {
             let existing = (try? await store.allNotes()) ?? []
-            if existing.contains(where: { $0.type == .source && $0.contentHash == fileHash }) {
-                return IngestResult(skipped: 1)
+            if let prior = existing.first(where: { $0.type == .source && $0.contentHash == fileHash }) {
+                let cited = existing.contains { $0.type != .source && $0.sources.contains(prior.id) }
+                if cited {
+                    return IngestResult(skipped: 1)
+                }
+                // Orphan — clean up so the fresh ingest doesn't leave
+                // duplicate source notes behind.
+                try? await store.delete(id: prior.id)
+                await progress("found incomplete previous ingest, re-running")
             }
         }
 
