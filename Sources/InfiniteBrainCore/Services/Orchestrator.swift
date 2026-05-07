@@ -37,6 +37,8 @@ enum UnitOutcome: Sendable {
 /// `concurrency` controls how many units the parallel decision phase runs
 /// at once. Defaults to 4. Within a batch, units don't see each other in the
 /// candidate set — that's the documented trade-off for the speedup.
+public typealias ProgressHandler = @Sendable (String) async -> Void
+
 public actor Orchestrator {
     public let skillRunner: SkillRunner
     public let idGenerator: IDGenerator
@@ -47,6 +49,7 @@ public actor Orchestrator {
     public let confidenceThreshold: Float
     public let chunkSize: Int
     public let concurrency: Int
+    public let onProgress: ProgressHandler?
 
     public init(
         skillRunner: SkillRunner,
@@ -57,7 +60,8 @@ public actor Orchestrator {
         candidateK: Int = 5,
         confidenceThreshold: Float = 0.7,
         chunkSize: Int = 16_000,
-        concurrency: Int = 4
+        concurrency: Int = 4,
+        onProgress: ProgressHandler? = nil
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
@@ -68,6 +72,11 @@ public actor Orchestrator {
         self.confidenceThreshold = confidenceThreshold
         self.chunkSize = chunkSize
         self.concurrency = max(1, concurrency)
+        self.onProgress = onProgress
+    }
+
+    private func progress(_ line: String) async {
+        await onProgress?(line)
     }
 
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
@@ -130,21 +139,31 @@ public actor Orchestrator {
             sourceNoteId = sourceNote.id
 
             let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+            await progress("split into \(chunks.count) chunk(s)")
             var collected: [[String: Any]] = []
             for (idx, chunk) in chunks.enumerated() {
-                let atomized = try await skillRunner.run(
-                    "atomize-text",
-                    input: [
-                        "text": chunk,
-                        "source_id": sourceNote.id,
-                        "chunk_index": idx,
-                        "chunk_total": chunks.count,
-                    ]
-                )
-                let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
-                collected.append(contentsOf: chunkUnits)
+                do {
+                    let atomized = try await skillRunner.run(
+                        "atomize-text",
+                        input: [
+                            "text": chunk,
+                            "source_id": sourceNote.id,
+                            "chunk_index": idx,
+                            "chunk_total": chunks.count,
+                        ]
+                    )
+                    let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
+                    collected.append(contentsOf: chunkUnits)
+                    await progress("chunk \(idx + 1)/\(chunks.count): \(chunkUnits.count) unit(s)")
+                } catch {
+                    // A failing atomize call (rate limit, malformed JSON,
+                    // CLI timeout) should not abort the whole book. Log and
+                    // move on so the user gets at least partial output.
+                    await progress("chunk \(idx + 1)/\(chunks.count): atomize failed (\(Self.brief(error))), skipping")
+                }
             }
             units = collected
+            await progress("atomized \(units.count) total unit(s) from \(chunks.count) chunk(s)")
             reservedIds = (0..<units.count).map { _ in idGenerator.next() }
 
             checkpoint = Checkpoint(
@@ -227,28 +246,43 @@ public actor Orchestrator {
         var outcomes: [(Int, UnitOutcome)] = []
         outcomes.reserveCapacity(units.count)
 
-        try await withThrowingTaskGroup(of: (Int, UnitOutcome).self) { group in
+        // Tasks are non-throwing here: a single unit's failure quarantines
+        // it instead of aborting the whole book. Errors are logged via the
+        // progress channel.
+        await withTaskGroup(of: (Int, UnitOutcome).self) { group in
             var nextToSubmit = 0
+            let total = units.count
             for _ in 0..<min(concurrency, units.count) {
                 let i = nextToSubmit; nextToSubmit += 1
                 let unit = units[i]; let id = reservedIds[i]
                 group.addTask { [self] in
-                    (i, try await decideOne(
-                        unit: unit, reservedId: id,
-                        sourceId: sourceId, sourceLabel: sourceLabel, store: store
-                    ))
+                    do {
+                        return (i, try await decideOne(
+                            unit: unit, reservedId: id,
+                            sourceId: sourceId, sourceLabel: sourceLabel, store: store
+                        ))
+                    } catch {
+                        await progress("unit \(i + 1)/\(total): \(Self.brief(error)), quarantined")
+                        return (i, .quarantine)
+                    }
                 }
             }
-            while let pair = try await group.next() {
+            while let pair = await group.next() {
                 outcomes.append(pair)
+                await progress("unit \(pair.0 + 1)/\(total) decided (\(outcomes.count)/\(total) done)")
                 if nextToSubmit < units.count {
                     let i = nextToSubmit; nextToSubmit += 1
                     let unit = units[i]; let id = reservedIds[i]
                     group.addTask { [self] in
-                        (i, try await decideOne(
-                            unit: unit, reservedId: id,
-                            sourceId: sourceId, sourceLabel: sourceLabel, store: store
-                        ))
+                        do {
+                            return (i, try await decideOne(
+                                unit: unit, reservedId: id,
+                                sourceId: sourceId, sourceLabel: sourceLabel, store: store
+                            ))
+                        } catch {
+                            await progress("unit \(i + 1)/\(total): \(Self.brief(error)), quarantined")
+                            return (i, .quarantine)
+                        }
                     }
                 }
             }
@@ -393,6 +427,14 @@ public actor Orchestrator {
             let evidence = dict["evidence"] as? String
             return Edge(type: type, target: target, evidence: evidence)
         }
+    }
+
+    /// Short error description for progress logs — e.g. "rate_limit",
+    /// "timed out", or the first line of a longer message.
+    static func brief(_ error: any Error) -> String {
+        let s = String(describing: error)
+            .replacingOccurrences(of: "\n", with: " ")
+        return String(s.prefix(120))
     }
 
     private static func numberValue(_ any: Any?) -> Float {

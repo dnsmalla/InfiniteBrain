@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.14.4] — 2026-05-07
+
+Long-PDF resilience — a single failing API call no longer kills the
+whole ingest, and the user sees forward progress per chunk and per unit.
+
+The previous behaviour: dropping a multi-hundred-page book in the
+Ingest tab showed nothing in the activity log for several minutes (just
+the "spinner") because everything before the first written note ran
+silently. If any one of the ~95 atomize calls or ~500 per-unit calls
+returned malformed JSON, hit a rate limit twice, or timed out, the
+whole ingest aborted and threw — the user only saw the final error.
+
+What changed
+- New ProgressHandler on Orchestrator, called at every meaningful
+  boundary: chunk N/M atomized → produced K units, unit i/N decided
+  (added/improved/skipped/quarantined). IngestViewModel attaches a
+  sink that pipes each line into the activity log on the main actor.
+- Per-chunk atomize failures are caught and logged; remaining chunks
+  still run. Result: a long book with a few flaky API calls still
+  produces a partial graph instead of zero notes.
+- Per-unit decision failures (classify timeout, JSON-parse abort,
+  reconcile error) are caught and counted as quarantined. Other
+  units continue. Whole-ingest only aborts on a fatal vault-write
+  error.
+
+What this didn't fix (because it can't from here without a fresh log)
+- If macOS or NLEmbedding silently kills the app via memory pressure,
+  watchdog, or another uncatchable abort. None has been logged so far,
+  and the 800-char NLEmbedding cap from 0.14.2 should prevent the
+  known abort path.
+
 ## [0.14.3] — 2026-05-07
 
 Fix: re-ingesting the same file produced a duplicate source note. Caught

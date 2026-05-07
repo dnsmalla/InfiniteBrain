@@ -71,10 +71,17 @@ public final class IngestViewModel: ObservableObject {
         let index = EmbeddingIndex(storeURL: indexURL)
         try? await index.load()
 
+        // Capture-safe progress sink: each progress line hops to the main
+        // actor and appends to `log` so the user sees forward motion during
+        // a long ingest instead of staring at a frozen panel.
+        let progressSink: ProgressHandler = { [weak self] line in
+            await MainActor.run { self?.append("   · \(line)") }
+        }
         let orchestrator = Orchestrator(
             skillRunner: runner,
             embeddings: NLEmbeddingProvider(),
-            index: index
+            index: index,
+            onProgress: progressSink
         )
 
         var totals = IngestResult()
