@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.15.0] — 2026-05-07
+
+Streaming ingest pipeline. Notes now appear in the vault as the run
+progresses, instead of all at the end.
+
+What changed
+- The orchestrator's two-phase model (atomize-everything → decide-and-write
+  -everything) is replaced by a per-chunk pipeline. Each chunk runs
+  atomize → for each unit: classify → summarize → reconcile → infer-edges
+  → write to vault. Multiple chunks run in parallel up to `concurrency`.
+- User-visible effect: instead of waiting until ~95% of the run for the
+  first note, atomic notes appear in the Vault tab as soon as their
+  parent chunk's pipeline completes.
+- Per-chunk fault tolerance preserved: a failing atomize logs + skips,
+  a failing unit decision quarantines.
+- Per-chunk progress logs now include a final summary like
+  `chunk 12/44 done: +5 added, 0 improved, 0 skipped`.
+
+What this drops
+- Mid-run resume via Checkpoint. With per-chunk streaming, the partial
+  state is just whatever atomic notes already landed in the vault. The
+  orphan-detect path still recovers a vault left with a source but no
+  atomic notes (incomplete previous ingest → re-run).
+- CheckpointResumeTests removed; CheckpointStoreTests kept (still useful
+  infra unit test).
+
+Test count: 34 InfiniteBrain (was 36; lost 2 from the resume test) +
+30 SharedLLMKit = 64 green.
+
 ## [0.14.7] — 2026-05-07
 
 Reliability tweaks for long ingests with the Claude CLI provider.

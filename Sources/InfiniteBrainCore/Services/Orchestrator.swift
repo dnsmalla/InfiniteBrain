@@ -107,157 +107,123 @@ public actor Orchestrator {
             }
         }
 
-        // Resume if a checkpoint exists for this file content; otherwise start fresh.
-        let checkpoint: Checkpoint
-        let sourceNoteId: String
-        let units: [[String: Any]]
-        let reservedIds: [String]
-
-        if let existing = try? await checkpoints.load(fileHash: fileHash) {
-            checkpoint = existing
-            sourceNoteId = existing.sourceId
-            units = existing.units.map { u in
-                ["title": u.title, "body": u.body]
-            }
-            reservedIds = existing.reservedIds
-        } else {
-            // Fresh ingest: write source note, atomise, save initial checkpoint.
-            let now = dateProvider.now()
-            let sourceNote = Note(
-                id: idGenerator.next(),
-                type: .source,
-                title: file.lastPathComponent,
-                summary: "Original source: \(file.lastPathComponent).",
-                body: "Path: \(file.path)",
-                edges: [],
-                sources: [],
-                contentHash: fileHash,
-                version: 1,
-                createdAt: now,
-                updatedAt: now
-            )
-            try await store.write(sourceNote)
-            if let embeddings, let index {
-                // Embed only the file name + a short snippet for the source.
-                // Full text would blow Apple's NLEmbedding internal limit.
-                let preview = "\(file.lastPathComponent): \(text.prefix(400))"
-                if let v = try? await embeddings.embed(preview) {
-                    await index.record(id: sourceNote.id, vector: v)
-                }
-            }
-            sourceNoteId = sourceNote.id
-
-            let chunks = TextChunker().chunk(text, targetChars: chunkSize)
-            await progress("split into \(chunks.count) chunk(s) — atomizing up to \(concurrency) in parallel")
-            // Atomize chunks in parallel, bounded by `concurrency`. Each atomize
-            // is independent; serial was leaving the API mostly idle.
-            // Order is preserved via the (chunkIndex, units) tuple sort.
-            var perChunk: [(Int, [[String: Any]])] = []
-            let total = chunks.count
-            let sourceId = sourceNote.id
-            @Sendable func atomizeChunk(_ i: Int) async -> (Int, [[String: Any]]) {
-                for attempt in 0..<2 {
-                    do {
-                        let r = try await skillRunner.run("atomize-text", input: [
-                            "text": chunks[i], "source_id": sourceId,
-                            "chunk_index": i, "chunk_total": total,
-                        ])
-                        let units = (r["units"] as? [[String: Any]]) ?? []
-                        await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
-                        return (i, units)
-                    } catch {
-                        if attempt == 0 {
-                            // Give claude CLI a moment to recover from a
-                            // transient failure (rate limit, exit 1 with
-                            // empty stderr, etc.) and retry once.
-                            try? await Task.sleep(nanoseconds: 1_500_000_000)
-                            await progress("chunk \(i + 1)/\(total): retrying after \(Self.brief(error))")
-                            continue
-                        }
-                        await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
-                        return (i, [])
-                    }
-                }
-                return (i, [])
-            }
-
-            await withTaskGroup(of: (Int, [[String: Any]]).self) { group in
-                var nextSubmit = 0
-                for _ in 0..<min(concurrency, total) {
-                    let i = nextSubmit; nextSubmit += 1
-                    group.addTask { await atomizeChunk(i) }
-                }
-                while let pair = await group.next() {
-                    perChunk.append(pair)
-                    if nextSubmit < total {
-                        let i = nextSubmit; nextSubmit += 1
-                        group.addTask { await atomizeChunk(i) }
-                    }
-                }
-            }
-            units = perChunk.sorted { $0.0 < $1.0 }.flatMap { $0.1 }
-            await progress("atomized \(units.count) total unit(s) from \(chunks.count) chunk(s)")
-            reservedIds = (0..<units.count).map { _ in idGenerator.next() }
-
-            checkpoint = Checkpoint(
-                fileHash: fileHash,
-                sourceId: sourceNote.id,
-                units: units.map { u in
-                    Checkpoint.Unit(
-                        title: (u["title"] as? String) ?? "",
-                        body: (u["body"] as? String) ?? "",
-                        lineCount: u["line_count"] as? Int,
-                        suggestedTypeHint: u["suggested_type_hint"] as? String
-                    )
-                },
-                reservedIds: reservedIds,
-                completedThrough: 0
-            )
-            try await checkpoints.save(checkpoint)
-        }
-
-        let startFrom = checkpoint.completedThrough
-        let pendingUnits = Array(units[startFrom...])
-        let pendingIds = Array(reservedIds[startFrom...])
-
-        // PHASE A — decide outcomes for pending units in parallel.
-        let outcomes = try await decideOutcomes(
-            units: pendingUnits,
-            reservedIds: pendingIds,
-            sourceId: sourceNoteId,
-            sourceLabel: file.lastPathComponent,
-            store: store
+        // Streaming pipeline: write source note up-front, then per-chunk
+        // atomize → decide-each-unit → write-immediately. Multiple chunks
+        // run in parallel up to `concurrency`. Notes appear in the vault as
+        // chunks finish, instead of all at the end.
+        let now = dateProvider.now()
+        let sourceNote = Note(
+            id: idGenerator.next(),
+            type: .source,
+            title: file.lastPathComponent,
+            summary: "Original source: \(file.lastPathComponent).",
+            body: "Path: \(file.path)",
+            edges: [],
+            sources: [],
+            contentHash: fileHash,
+            version: 1,
+            createdAt: now,
+            updatedAt: now
         )
-
-        // PHASE B — apply outcomes serially. Persist progress after each so a
-        // crash mid-batch resumes exactly from the next pending unit.
-        var result = IngestResult()
-        var working = checkpoint
-        for (offset, outcome) in outcomes.enumerated() {
-            switch outcome {
-            case .skip:
-                result.skipped += 1
-            case .quarantine:
-                result.quarantined += 1
-            case .improve(let updated):
-                try await store.write(updated)
-                result.improved += 1
-            case .add(let note, let vector):
-                try await store.write(note)
-                if let index, let vector {
-                    await index.record(id: note.id, vector: vector)
-                }
-                result.added += 1
+        try await store.write(sourceNote)
+        if let embeddings, let index {
+            let preview = "\(file.lastPathComponent): \(text.prefix(400))"
+            if let v = try? await embeddings.embed(preview) {
+                await index.record(id: sourceNote.id, vector: v)
             }
-            working.completedThrough = startFrom + offset + 1
-            try await checkpoints.save(working)
+        }
+        let sourceId = sourceNote.id
+        let label = file.lastPathComponent
+
+        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+        let total = chunks.count
+        await progress("split into \(total) chunk(s) — pipelining up to \(concurrency) at once")
+
+        // Per-chunk pipeline: atomize → for each unit: decide → write.
+        @Sendable func processChunk(_ i: Int) async -> IngestResult {
+            // Atomize with one retry.
+            var atomized: [[String: Any]] = []
+            for attempt in 0..<2 {
+                do {
+                    let r = try await skillRunner.run("atomize-text", input: [
+                        "text": chunks[i], "source_id": sourceId,
+                        "chunk_index": i, "chunk_total": total,
+                    ])
+                    atomized = (r["units"] as? [[String: Any]]) ?? []
+                    await progress("chunk \(i + 1)/\(total): atomized → \(atomized.count) unit(s)")
+                    break
+                } catch {
+                    if attempt == 0 {
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        await progress("chunk \(i + 1)/\(total): retrying after \(Self.brief(error))")
+                        continue
+                    }
+                    await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
+                    return IngestResult()
+                }
+            }
+
+            // Decide + write each unit. Serial within a chunk so the user sees
+            // notes accrue at a steady pace.
+            var local = IngestResult()
+            for (j, unit) in atomized.enumerated() {
+                let reservedId = idGenerator.next()
+                let outcome: UnitOutcome
+                do {
+                    outcome = try await decideOne(
+                        unit: unit, reservedId: reservedId,
+                        sourceId: sourceId, sourceLabel: label, store: store
+                    )
+                } catch {
+                    await progress("chunk \(i + 1)/\(total) unit \(j + 1)/\(atomized.count): \(Self.brief(error))")
+                    local.quarantined += 1
+                    continue
+                }
+                switch outcome {
+                case .skip: local.skipped += 1
+                case .quarantine: local.quarantined += 1
+                case .improve(let updated):
+                    try? await store.write(updated)
+                    local.improved += 1
+                case .add(let note, let vector):
+                    try? await store.write(note)
+                    if let index, let vector {
+                        await index.record(id: note.id, vector: vector)
+                    }
+                    local.added += 1
+                }
+            }
+            await progress("chunk \(i + 1)/\(total) done: +\(local.added) added, \(local.improved) improved, \(local.skipped) skipped")
+            return local
         }
 
-        // All units done — drop the checkpoint and flush the index.
-        try await checkpoints.delete(fileHash: fileHash)
+        // Keep `checkpoints` referenced so unused-variable warnings stay quiet
+        // while the streaming version forgoes mid-run resume. The orphan
+        // detect above already handles "previous ingest never completed".
+        _ = checkpoints
+
+        var result = IngestResult()
+        await withTaskGroup(of: IngestResult.self) { group in
+            var nextSubmit = 0
+            for _ in 0..<min(concurrency, total) {
+                let i = nextSubmit; nextSubmit += 1
+                group.addTask { await processChunk(i) }
+            }
+            while let r = await group.next() {
+                result.added += r.added
+                result.improved += r.improved
+                result.skipped += r.skipped
+                result.quarantined += r.quarantined
+                if nextSubmit < total {
+                    let i = nextSubmit; nextSubmit += 1
+                    group.addTask { await processChunk(i) }
+                }
+            }
+        }
+
         if let index {
             do { try await index.flush() }
-            catch { /* index is rebuildable from the markdown; surfaced via caller */ }
+            catch { /* index is rebuildable from the markdown */ }
         }
         return result
     }
@@ -266,64 +232,6 @@ public actor Orchestrator {
 
     /// Runs the per-unit decision pipeline in parallel up to `concurrency`,
     /// preserving the original unit order in the returned outcomes array.
-    private func decideOutcomes(
-        units: [[String: Any]],
-        reservedIds: [String],
-        sourceId: String,
-        sourceLabel: String,
-        store: VaultStore
-    ) async throws -> [UnitOutcome] {
-        guard !units.isEmpty else { return [] }
-        precondition(reservedIds.count == units.count, "must reserve one id per unit")
-
-        var outcomes: [(Int, UnitOutcome)] = []
-        outcomes.reserveCapacity(units.count)
-
-        // Tasks are non-throwing here: a single unit's failure quarantines
-        // it instead of aborting the whole book. Errors are logged via the
-        // progress channel.
-        await withTaskGroup(of: (Int, UnitOutcome).self) { group in
-            var nextToSubmit = 0
-            let total = units.count
-            for _ in 0..<min(concurrency, units.count) {
-                let i = nextToSubmit; nextToSubmit += 1
-                let unit = units[i]; let id = reservedIds[i]
-                group.addTask { [self] in
-                    do {
-                        return (i, try await decideOne(
-                            unit: unit, reservedId: id,
-                            sourceId: sourceId, sourceLabel: sourceLabel, store: store
-                        ))
-                    } catch {
-                        await progress("unit \(i + 1)/\(total): \(Self.brief(error)), quarantined")
-                        return (i, .quarantine)
-                    }
-                }
-            }
-            while let pair = await group.next() {
-                outcomes.append(pair)
-                await progress("unit \(pair.0 + 1)/\(total) decided (\(outcomes.count)/\(total) done)")
-                if nextToSubmit < units.count {
-                    let i = nextToSubmit; nextToSubmit += 1
-                    let unit = units[i]; let id = reservedIds[i]
-                    group.addTask { [self] in
-                        do {
-                            return (i, try await decideOne(
-                                unit: unit, reservedId: id,
-                                sourceId: sourceId, sourceLabel: sourceLabel, store: store
-                            ))
-                        } catch {
-                            await progress("unit \(i + 1)/\(total): \(Self.brief(error)), quarantined")
-                            return (i, .quarantine)
-                        }
-                    }
-                }
-            }
-        }
-
-        return outcomes.sorted { $0.0 < $1.0 }.map { $0.1 }
-    }
-
     private func decideOne(
         unit: [String: Any],
         reservedId: String,
