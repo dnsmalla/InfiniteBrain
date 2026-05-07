@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.14.6] — 2026-05-07
+
+Speed: parallel atomize.
+
+The user reported "every chunk's data isn't being created" after a few
+minutes. Diagnosis: nothing was wrong — atomic notes only get written
+after Phase A (atomize-all-chunks) completes, then Phase B (per-unit
+decide+classify+summarize+reconcile) runs. Phase A was serial, so a
+44-chunk book at ~25s per Claude CLI atomize call meant ~18 minutes
+of waiting before any note hit the vault.
+
+Fix: atomize chunks in parallel up to `concurrency` (default 4) using
+the same sliding TaskGroup pattern as Phase B. ~4× speedup on the
+Phase A wall-clock.
+
+Per-chunk failures still log + skip; results are reordered by chunk
+index after the parallel batch completes so atomize order matches
+input order.
+
+Tests still 36 InfiniteBrain + 30 SharedLLMKit = 66 green.
+
 ## [0.14.5] — 2026-05-07
 
 Fix: dedup wrongly skipped re-ingest of an *orphaned* source.

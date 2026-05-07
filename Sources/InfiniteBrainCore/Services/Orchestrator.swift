@@ -148,30 +148,57 @@ public actor Orchestrator {
             sourceNoteId = sourceNote.id
 
             let chunks = TextChunker().chunk(text, targetChars: chunkSize)
-            await progress("split into \(chunks.count) chunk(s)")
-            var collected: [[String: Any]] = []
-            for (idx, chunk) in chunks.enumerated() {
-                do {
-                    let atomized = try await skillRunner.run(
-                        "atomize-text",
-                        input: [
-                            "text": chunk,
-                            "source_id": sourceNote.id,
-                            "chunk_index": idx,
-                            "chunk_total": chunks.count,
-                        ]
-                    )
-                    let chunkUnits = (atomized["units"] as? [[String: Any]]) ?? []
-                    collected.append(contentsOf: chunkUnits)
-                    await progress("chunk \(idx + 1)/\(chunks.count): \(chunkUnits.count) unit(s)")
-                } catch {
-                    // A failing atomize call (rate limit, malformed JSON,
-                    // CLI timeout) should not abort the whole book. Log and
-                    // move on so the user gets at least partial output.
-                    await progress("chunk \(idx + 1)/\(chunks.count): atomize failed (\(Self.brief(error))), skipping")
+            await progress("split into \(chunks.count) chunk(s) — atomizing up to \(concurrency) in parallel")
+            // Atomize chunks in parallel, bounded by `concurrency`. Each atomize
+            // is independent; serial was leaving the API mostly idle.
+            // Order is preserved via the (chunkIndex, units) tuple sort.
+            var perChunk: [(Int, [[String: Any]])] = []
+            await withTaskGroup(of: (Int, [[String: Any]]).self) { group in
+                var nextSubmit = 0
+                let total = chunks.count
+                for _ in 0..<min(concurrency, total) {
+                    let i = nextSubmit; nextSubmit += 1
+                    let chunk = chunks[i]
+                    let sourceId = sourceNote.id
+                    group.addTask { [self] in
+                        do {
+                            let r = try await skillRunner.run("atomize-text", input: [
+                                "text": chunk, "source_id": sourceId,
+                                "chunk_index": i, "chunk_total": total,
+                            ])
+                            let units = (r["units"] as? [[String: Any]]) ?? []
+                            await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
+                            return (i, units)
+                        } catch {
+                            await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
+                            return (i, [])
+                        }
+                    }
+                }
+                while let pair = await group.next() {
+                    perChunk.append(pair)
+                    if nextSubmit < total {
+                        let i = nextSubmit; nextSubmit += 1
+                        let chunk = chunks[i]
+                        let sourceId = sourceNote.id
+                        group.addTask { [self] in
+                            do {
+                                let r = try await skillRunner.run("atomize-text", input: [
+                                    "text": chunk, "source_id": sourceId,
+                                    "chunk_index": i, "chunk_total": total,
+                                ])
+                                let units = (r["units"] as? [[String: Any]]) ?? []
+                                await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
+                                return (i, units)
+                            } catch {
+                                await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
+                                return (i, [])
+                            }
+                        }
+                    }
                 }
             }
-            units = collected
+            units = perChunk.sorted { $0.0 < $1.0 }.flatMap { $0.1 }
             await progress("atomized \(units.count) total unit(s) from \(chunks.count) chunk(s)")
             reservedIds = (0..<units.count).map { _ in idGenerator.next() }
 
