@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.14.0] — 2026-05-07
+
+UI polish — the app looks like a real macOS app now, not a quick demo.
+
+Navigation
+- Replaced TabView with NavigationSplitView. Sidebar lists the five
+  panes (Ingest / Vault / Graph / Query / Settings), title bar carries
+  the current section name. Window minimum bumped to 1180×760.
+- New always-visible status bar at the bottom of every pane: vault
+  folder, active LLM provider, configured/incomplete state. Built with
+  `.regularMaterial` so it picks up appearance changes automatically.
+- Sidebar header shows the app name + version pulled from
+  CFBundleShortVersionString.
+
+Pane redesign
+- IngestView: drop zone is now a tinted rounded card that reacts to
+  drag state; queued files render as styled rows with type-icon and
+  file size; Run is a borderedProminent button with Cmd-Return; the log
+  has a real "Activity" header and an empty-state hint; results render
+  as a coloured pill (added/improved/skipped) instead of plain text.
+- SettingsView: card-based layout with section icons; vault path
+  truncates middle-style; provider picker shows live status with
+  green-check / orange-warn / info badges; API key card hides when a
+  CLI provider is selected. Capped at 720pt wide so it doesn't sprawl.
+- QueryView: search-bar style ask field with up-arrow circle button
+  and inline progress; example-question placeholder replaces the bare
+  "Coming soon"; cited ids render as monospaced chips in a flow layout
+  that wraps naturally; errors get a coloured callout.
+- VaultBrowser: type-grouped list with smallCaps headers and per-type
+  count, filter field in the toolbar, large-icon empty states for
+  no-vault and no-notes cases, monospaced markdown preview pane.
+
+A few unrelated nits cleaned up along the way (consistent `.padding`
+multiples, system materials, Label everywhere instead of plain Text).
+
 ## [0.13.0] — 2026-05-07
 
 LLM provider choice — use a locally installed `claude`, `codex`, or
