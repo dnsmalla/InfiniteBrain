@@ -15,6 +15,7 @@ struct InfiniteBrainCLI {
             case "ingest":   try await runIngest(Array(args.dropFirst()))
             case "query":    try await runQuery(Array(args.dropFirst()))
             case "seed":     try runSeed(Array(args.dropFirst()))
+            case "reindex":  try await runReindex(Array(args.dropFirst()))
             case "version":  print(version())
             case "help", "-h", "--help": printUsage()
             default:
@@ -92,6 +93,22 @@ struct InfiniteBrainCLI {
         }
     }
 
+    static func runReindex(_ args: [String]) async throws {
+        let parsed = parseFlags(args)
+        guard let vaultPath = parsed.vault ?? parsed.positional.first else {
+            fail("missing --vault (or set INFINITEBRAIN_VAULT)")
+        }
+        let vault = Vault(root: URL(fileURLWithPath: vaultPath))
+        print("rebuilding embedding index from \(vault.notesRoot.path)…")
+        let index = try await IndexRebuilder.rebuild(
+            vault: vault,
+            embeddings: NLEmbeddingProvider()
+        )
+        // Quick sanity probe — count entries via a generous nearest call.
+        let allHits = await index.nearest(to: [Float](repeating: 0.001, count: 512), k: 100_000)
+        print("indexed \(allHits.count) note(s) at \(vault.sidecar.appendingPathComponent("embeddings.json").path)")
+    }
+
     static func runSeed(_ args: [String]) throws {
         let parsed = parseFlags(args)
         guard let vaultPath = parsed.vault ?? parsed.positional.first else {
@@ -142,6 +159,7 @@ struct InfiniteBrainCLI {
           infb ingest <file…> --vault <path> [--api-key <key>] [--chunk-size N]
           infb query <question…> --vault <path> [--api-key <key>] [--top-k N]
           infb seed <vault-path>
+          infb reindex <vault-path>
           infb version
 
         env:

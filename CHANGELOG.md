@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.12.0] — 2026-05-07
+
+`infb reindex` — recovery path when the embedding index drifts from the
+markdown.
+
+If you delete notes from the vault by hand, copy a vault between machines,
+or the `embeddings.json` cache gets corrupted, you previously had no way
+back to a clean index. Now there is one.
+
+- New `IndexRebuilder.rebuild(vault:embeddings:)` walks every markdown note
+  in the vault, embeds each body (or title for empty-body sources), and
+  writes a fresh `embeddings.json`. The old file is deleted first so a
+  partial rebuild can't leave stale entries mixed with new.
+- New CLI subcommand: `infb reindex <vault-path>`. Uses Apple's offline
+  NaturalLanguage embeddings — no API key needed.
+- A single un-embeddable note is logged-and-skipped rather than failing
+  the whole rebuild.
+
+Tests
+- IndexRebuilderTests: pre-populate index with one stale id and one valid
+  id, write two notes to the vault, rebuild — assert the result contains
+  exactly the two vault note ids and not the stale one.
+- 58 tests green (33 InfiniteBrain, 25 SharedLLMKit).
+
 ## [0.11.0] — 2026-05-07
 
 Hedging-text linting — the last unenforced clause of `quality-bar.mdc` is
