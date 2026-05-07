@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.20.1] — 2026-05-07
+
+User reported "app crashes on long PDFs". Investigation showed the
+process was actually alive but idle — appearance of a crash because:
+(a) the UI beachballed under thousands of activity-log lines, and
+(b) the embedding index was out of sync with the vault on partial
+runs (only flushed at end-of-ingest, lost on Stop / quit).
+
+Vault inspection found 60 atomic notes on disk but only 13 entries
+in the embedding index. Real bug.
+
+Fixes
+- Embedding index flushes after every chunk, not just at end of
+  ingest. Survives Stop, force-quit, app crash without losing the
+  vectors we already computed. Re-runs see the full index and dedup
+  correctly.
+- Activity log capped to the most recent 500 lines. A 220-unit
+  ingest can produce 1000+ progress lines; capping prevents the
+  SwiftUI list from beachballing on every redraw. Old lines silently
+  dropped — users care about what's happening now, not 20 minutes
+  ago.
+
+68 tests still green.
+
 ## [0.20.0] — 2026-05-07
 
 Content-selection rules in `atomize-text` rewritten as a real

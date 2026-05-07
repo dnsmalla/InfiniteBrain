@@ -176,8 +176,17 @@ public final class IngestViewModel: ObservableObject {
         append("done. total — added \(totals.added), improved \(totals.improved), skipped \(totals.skipped)")
     }
 
+    /// Keep the activity log bounded so a long-running ingest doesn't
+    /// produce thousands of @Published rows that beachball the SwiftUI
+    /// list. We retain the most recent 500 lines and silently drop older
+    /// ones; users care about what's happening *now*, not 20 minutes ago.
+    private static let maxLogLines = 500
+
     private func append(_ line: String) {
         log.append(line)
+        if log.count > Self.maxLogLines {
+            log.removeFirst(log.count - Self.maxLogLines)
+        }
     }
 
     private let byteFormatter: ByteCountFormatter = {

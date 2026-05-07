@@ -230,6 +230,12 @@ public actor Orchestrator {
                     local.added += 1
                 }
             }
+            // Persist the embedding index after every chunk so a later
+            // Stop / crash / quit doesn't lose the vectors we already
+            // computed. End-of-ingest flush alone left the index out of
+            // sync with the vault on partial runs.
+            if let index { try? await index.flush() }
+
             // Mark this chunk as complete in the checkpoint so a future
             // re-run won't redo it.
             _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
