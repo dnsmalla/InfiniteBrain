@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.23.0] — 2026-05-07
+
+Schema tab — surfaces the Infinite Brain architecture so users can
+verify which 16 node types and 10 edge types the system is actually
+using.
+
+User asked "where are the 16 node types?". The types existed (in the
+NodeType enum, in classify-node SKILL.md, in every note's frontmatter,
+in the GraphView legend) but never as readable documentation.
+
+- New `SchemaView` (Schema tab in the GUI). Two grids:
+  - 16 node-type cards with colour swatch (matching GraphView),
+    one-line summary, and a concrete example for each
+  - 10 edge-type cards with name + summary
+- Plus a "How to inspect" footer pointing at:
+  - Vault → Raw .md frontmatter (where `type:` and `edges:` live)
+  - Graph tab (where the colour legend lives)
+  - `<vault>/.infinitebrain/skills/classify-node/SKILL.md` and
+    `infer-edges/SKILL.md` for tuning
+- Schema strings live as extension properties on NodeType /
+  EdgeType in InfiniteBrainCore, so the CLI or any future view
+  can reuse them.
+
+68 tests still green.
+
 ## [0.22.0] — 2026-05-07
 
 LaTeX math rendering in the Vault preview.

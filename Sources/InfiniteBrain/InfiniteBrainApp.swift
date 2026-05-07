@@ -29,6 +29,8 @@ struct ContentView: View {
                     .tabItem { Label("Graph", systemImage: "circle.hexagongrid") }
                 QueryView()
                     .tabItem { Label("Query", systemImage: "magnifyingglass") }
+                SchemaView()
+                    .tabItem { Label("Schema", systemImage: "rectangle.3.group") }
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
