@@ -10,11 +10,17 @@ struct VaultBrowser: View {
     @State private var query: String = ""
 
     var body: some View {
-        HSplitView {
-            list
-                .frame(minWidth: 280, idealWidth: 320)
-            previewPane
-                .frame(maxWidth: .infinity)
+        GeometryReader { geo in
+            HSplitView {
+                list
+                    .frame(
+                        minWidth: 220,
+                        idealWidth: max(260, geo.size.width / 3),
+                        maxWidth: max(420, geo.size.width / 2.2)
+                    )
+                previewPane
+                    .frame(maxWidth: .infinity)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -104,13 +110,10 @@ struct VaultBrowser: View {
                         .background(.regularMaterial)
                         Divider()
                     }
-                    ScrollView {
-                        Text(preview)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                            .padding(20)
-                    }
+                    MarkdownPreview(markdown: preview)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
                 }
             }
         }

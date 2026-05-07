@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.21.0] — 2026-05-07
+
+Vault preview: real markdown rendering + ~1/3 sidebar layout.
+
+Was: the preview pane showed the entire .md file in monospace,
+including the YAML frontmatter dump, with no styling at all. Bold,
+italic, headings, code blocks all looked identical.
+
+Now: a proper styled view.
+
+Layout
+- HSplitView pinned via GeometryReader so the sidebar takes about
+  one third of the window width (min 220, ideal width/3, max
+  width/2.2). User can still drag the divider; the bounds keep it
+  sensible across window sizes.
+
+Markdown rendering
+- New `MarkdownPreview` (NSViewRepresentable wrapping NSTextView).
+  Native — no webview, no JS bundling.
+- YAML frontmatter (`---…---`) stripped before render so the user
+  sees just the note body.
+- Built on `AttributedString(markdown:)` with `.full` interpreted
+  syntax. The presentation-intent runs are walked and styled:
+  - h1-h6 get true heading sizes (26 / 22 / 18 / 16 / 14 / 13pt)
+    with bold weight and tighter line-height.
+  - Inline emphasis: `**bold**` → bold, `*italic*` → italic,
+    `` `code` `` → monospaced. Links keep the URL clickable.
+  - Body uses 14pt system font with 1.35 line-height.
+- Math expressions (`$x^2$` and `$$…$$`) currently render as
+  inline text. KaTeX integration is the next pass.
+
+Tests still 68 green; this is purely UI.
+
 ## [0.20.1] — 2026-05-07
 
 User reported "app crashes on long PDFs". Investigation showed the
