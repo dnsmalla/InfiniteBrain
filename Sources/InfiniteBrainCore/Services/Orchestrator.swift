@@ -60,7 +60,7 @@ public actor Orchestrator {
         candidateK: Int = 5,
         confidenceThreshold: Float = 0.7,
         chunkSize: Int = 16_000,
-        concurrency: Int = 4,
+        concurrency: Int = 2,
         onProgress: ProgressHandler? = nil
     ) {
         self.skillRunner = skillRunner
@@ -153,48 +153,45 @@ public actor Orchestrator {
             // is independent; serial was leaving the API mostly idle.
             // Order is preserved via the (chunkIndex, units) tuple sort.
             var perChunk: [(Int, [[String: Any]])] = []
+            let total = chunks.count
+            let sourceId = sourceNote.id
+            @Sendable func atomizeChunk(_ i: Int) async -> (Int, [[String: Any]]) {
+                for attempt in 0..<2 {
+                    do {
+                        let r = try await skillRunner.run("atomize-text", input: [
+                            "text": chunks[i], "source_id": sourceId,
+                            "chunk_index": i, "chunk_total": total,
+                        ])
+                        let units = (r["units"] as? [[String: Any]]) ?? []
+                        await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
+                        return (i, units)
+                    } catch {
+                        if attempt == 0 {
+                            // Give claude CLI a moment to recover from a
+                            // transient failure (rate limit, exit 1 with
+                            // empty stderr, etc.) and retry once.
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            await progress("chunk \(i + 1)/\(total): retrying after \(Self.brief(error))")
+                            continue
+                        }
+                        await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
+                        return (i, [])
+                    }
+                }
+                return (i, [])
+            }
+
             await withTaskGroup(of: (Int, [[String: Any]]).self) { group in
                 var nextSubmit = 0
-                let total = chunks.count
                 for _ in 0..<min(concurrency, total) {
                     let i = nextSubmit; nextSubmit += 1
-                    let chunk = chunks[i]
-                    let sourceId = sourceNote.id
-                    group.addTask { [self] in
-                        do {
-                            let r = try await skillRunner.run("atomize-text", input: [
-                                "text": chunk, "source_id": sourceId,
-                                "chunk_index": i, "chunk_total": total,
-                            ])
-                            let units = (r["units"] as? [[String: Any]]) ?? []
-                            await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
-                            return (i, units)
-                        } catch {
-                            await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
-                            return (i, [])
-                        }
-                    }
+                    group.addTask { await atomizeChunk(i) }
                 }
                 while let pair = await group.next() {
                     perChunk.append(pair)
                     if nextSubmit < total {
                         let i = nextSubmit; nextSubmit += 1
-                        let chunk = chunks[i]
-                        let sourceId = sourceNote.id
-                        group.addTask { [self] in
-                            do {
-                                let r = try await skillRunner.run("atomize-text", input: [
-                                    "text": chunk, "source_id": sourceId,
-                                    "chunk_index": i, "chunk_total": total,
-                                ])
-                                let units = (r["units"] as? [[String: Any]]) ?? []
-                                await progress("chunk \(i + 1)/\(total): \(units.count) unit(s)")
-                                return (i, units)
-                            } catch {
-                                await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
-                                return (i, [])
-                            }
-                        }
+                        group.addTask { await atomizeChunk(i) }
                     }
                 }
             }

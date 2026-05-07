@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.14.7] — 2026-05-07
+
+Reliability tweaks for long ingests with the Claude CLI provider.
+
+- Default `concurrency` lowered from 4 → 2. Running 4 concurrent
+  `claude -p` subprocesses sometimes produces `nonzeroExit(1, stderr:"")`
+  on individual chunks (looks like local rate limiting / contention).
+  Two in flight is more reliable; users on the API can bump back up.
+- Per-chunk atomize now retries once after a 1.5s pause if the first
+  attempt fails before logging "skipping". Recovers transient failures
+  without lowering throughput when things are healthy.
+- Same atomize-task body lived in two places (priming + sliding
+  window). Extracted to a single inner func.
+
+Note: notes still don't appear in the vault until Phase A (atomize all
+chunks) completes. A streaming pipeline (atomize chunk → decide+write
+its units → continue) is the right architectural fix and is queued —
+ping me to ship it.
+
 ## [0.14.6] — 2026-05-07
 
 Speed: parallel atomize.
