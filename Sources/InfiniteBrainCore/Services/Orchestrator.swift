@@ -106,8 +106,13 @@ public actor Orchestrator {
                 updatedAt: now
             )
             try await store.write(sourceNote)
-            if let embeddings, let index, let v = try? await embeddings.embed(text) {
-                await index.record(id: sourceNote.id, vector: v)
+            if let embeddings, let index {
+                // Embed only the file name + a short snippet for the source.
+                // Full text would blow Apple's NLEmbedding internal limit.
+                let preview = "\(file.lastPathComponent): \(text.prefix(400))"
+                if let v = try? await embeddings.embed(preview) {
+                    await index.record(id: sourceNote.id, vector: v)
+                }
             }
             sourceNoteId = sourceNote.id
 

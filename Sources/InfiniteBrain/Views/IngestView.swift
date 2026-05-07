@@ -17,7 +17,6 @@ struct IngestView: View {
             log
         }
         .padding(20)
-        .padding(.bottom, 32)   // breathing room above the status bar
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 

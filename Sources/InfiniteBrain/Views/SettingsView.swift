@@ -25,7 +25,6 @@ struct SettingsView: View {
             .frame(maxWidth: 720, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.bottom, 28)   // breathing room above the status bar
         .fileImporter(isPresented: $showingPicker, allowedContentTypes: [.folder]) { result in
             if case let .success(url) = result {
                 settings.vaultPath = url

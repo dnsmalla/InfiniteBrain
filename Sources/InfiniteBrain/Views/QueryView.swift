@@ -20,7 +20,6 @@ struct QueryView: View {
             answerCard
         }
         .padding(20)
-        .padding(.bottom, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear { fieldFocused = true }
     }

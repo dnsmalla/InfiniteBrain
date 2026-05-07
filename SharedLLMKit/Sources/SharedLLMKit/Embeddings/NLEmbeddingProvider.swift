@@ -11,11 +11,19 @@ public struct NLEmbeddingProvider: EmbeddingProvider {
         self.language = language
     }
 
+    /// Hard cap on how many characters we hand to NLEmbedding. Apple's
+    /// `vector(for:)` throws a C++ exception (which becomes a SIGABRT) when
+    /// the input is too long. Empirically 1000 is safe; we leave headroom.
+    public static let maxInputChars = 800
+
     public func embed(_ text: String) async throws -> [Float] {
         guard let embedding = NLEmbedding.sentenceEmbedding(for: language) else {
             throw EmbeddingError.modelUnavailable(language: language.rawValue)
         }
-        guard let vector = embedding.vector(for: text) else {
+        let safe = text.count > Self.maxInputChars
+            ? String(text.prefix(Self.maxInputChars))
+            : text
+        guard let vector = embedding.vector(for: safe) else {
             throw EmbeddingError.cannotEmbed(text.prefix(80).description)
         }
         return vector.map(Float.init)

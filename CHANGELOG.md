@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.14.2] — 2026-05-07
+
+Fixes a SIGABRT inside Apple's NLEmbedding when ingesting a long PDF.
+
+- The orchestrator was feeding the entire extracted source text into
+  `NLEmbedding.vector(for:)` for the source-note embedding. On a
+  ~1.5M-character book this overflowed an internal buffer in
+  `CoreNLP::ContextualWordEmbedding::fillWordVectors` and the C++
+  exception became an uncatchable SIGABRT (try? doesn't help — abort()
+  bypasses Swift's error path).
+- `NLEmbeddingProvider.embed` now hard-caps input at 800 characters
+  before calling Apple's API. Defends every caller automatically.
+- The orchestrator additionally embeds only a short preview (file name
+  + first 400 chars) for the source-note vector instead of the whole
+  document, so the source still has a meaningful retrieval signature.
+- Also reverted to the working TabView layout — NavigationSplitView
+  was rendering blank panes on macOS 26.3. Status bar moved under a
+  divider beneath the tabs instead of via safeAreaInset.
+
 ## [0.14.1] — 2026-05-07
 
 UX fixes around provider selection.

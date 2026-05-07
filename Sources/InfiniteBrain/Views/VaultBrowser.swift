@@ -16,7 +16,6 @@ struct VaultBrowser: View {
             previewPane
                 .frame(maxWidth: .infinity)
         }
-        .padding(.bottom, 28)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 TextField("Filter…", text: $query)
