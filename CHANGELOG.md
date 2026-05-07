@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.14.3] — 2026-05-07
+
+Fix: re-ingesting the same file produced a duplicate source note. Caught
+by inspecting the Vault tab after dragging the same PDF in twice — count
+went to 2 with identical titles.
+
+Root cause: the orchestrator's checkpoint is deleted on full success, so
+the next ingest of the same content hash sees no checkpoint and falls
+into the fresh-ingest branch, writing another source note.
+
+Fix: before doing any work, the orchestrator scans the vault for an
+existing source note with `contentHash == fileHash`. If found AND no
+in-flight checkpoint exists, the call returns
+`IngestResult(skipped: 1)` immediately — no atomize, no LLM calls, no
+new files. Tested by ingesting the same file twice and asserting the
+vault contains exactly one source note.
+
+NOTE: Existing duplicates from earlier versions remain in the vault
+until you delete the old `source/` files manually. The dup-detect only
+prevents NEW duplicates going forward.
+
 ## [0.14.2] — 2026-05-07
 
 Fixes a SIGABRT inside Apple's NLEmbedding when ingesting a long PDF.

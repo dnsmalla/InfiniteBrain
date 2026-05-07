@@ -76,6 +76,19 @@ public actor Orchestrator {
         let text = try Self.readText(from: file)
         let fileHash = Self.hash(text)
 
+        // Short-circuit: if a source note with this exact content_hash already
+        // lives in the vault AND no in-flight checkpoint exists, the same file
+        // has already been fully ingested — don't re-run the pipeline or
+        // create a duplicate source note. Returns IngestResult.skipped = 1
+        // so the caller can show "already ingested" to the user.
+        let inFlight = (try? await checkpoints.load(fileHash: fileHash)) != nil
+        if !inFlight {
+            let existing = (try? await store.allNotes()) ?? []
+            if existing.contains(where: { $0.type == .source && $0.contentHash == fileHash }) {
+                return IngestResult(skipped: 1)
+            }
+        }
+
         // Resume if a checkpoint exists for this file content; otherwise start fresh.
         let checkpoint: Checkpoint
         let sourceNoteId: String

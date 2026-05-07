@@ -14,8 +14,11 @@ final class OrchestratorEmbeddingTests: XCTestCase {
         try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
         let f1 = inbox.appendingPathComponent("a.txt")
         let f2 = inbox.appendingPathComponent("b.txt")
-        try "free tier dropped".write(to: f1, atomically: true, encoding: .utf8)
-        try "free tier dropped".write(to: f2, atomically: true, encoding: .utf8)
+        // Different bytes per file (so the dup-by-content short-circuit doesn't
+        // skip the second ingest), but semantically similar so embeddings stay
+        // close and the reconcile candidate set is non-empty.
+        try "free tier dropped from indie plan".write(to: f1, atomically: true, encoding: .utf8)
+        try "the free tier is being dropped".write(to: f2, atomically: true, encoding: .utf8)
 
         // Capture the user prompt sent to reconcile-note across runs.
         let capture = PromptCapture()
