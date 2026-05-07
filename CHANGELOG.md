@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.21.1] — 2026-05-07
+
+Vault preview fixes from the user feedback "current is not good".
+
+- **Paragraph breaks were missing.** AttributedString.markdown
+  attributes the text but doesn't insert literal newlines between
+  block-level elements, so headings ran straight into paragraphs and
+  consecutive paragraphs collapsed into one wall of text. The
+  renderer now tracks block identity and emits `\n\n` whenever the
+  block-level presentation intent changes — headings, paragraphs,
+  blockquotes, and lists separate cleanly.
+- **Math equations rendered as raw `$...$`.** The renderer now
+  pre-processes the markdown to wrap `$expr$` and `$$expr$$` in
+  inline-code backticks, which makes AttributedString render them
+  monospaced — visually distinct from prose, even if not yet
+  LaTeX-typeset. Multi-line and unbalanced delimiters are left alone.
+- **New Rendered / Raw .md toggle** as a segmented control in the
+  preview pane header. Use Raw when you want to inspect the
+  frontmatter or copy the source verbatim; Rendered for reading.
+
 ## [0.21.0] — 2026-05-07
 
 Vault preview: real markdown rendering + ~1/3 sidebar layout.

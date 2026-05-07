@@ -66,10 +66,15 @@ struct MarkdownPreview: NSViewRepresentable {
     private static let headingSizes: [CGFloat] = [26, 22, 18, 16, 14, 13]
 
     static func render(_ markdown: String) -> NSAttributedString {
+        // Pre-process math so AttributedString treats $...$ and $$...$$ as
+        // inline code, which renders monospaced. Saves bundling KaTeX and at
+        // least makes the equations visually distinct from prose.
+        let prepared = wrapMath(markdown)
+
         let parsed: AttributedString
         do {
             parsed = try AttributedString(
-                markdown: markdown,
+                markdown: prepared,
                 options: .init(
                     allowsExtendedAttributes: true,
                     interpretedSyntax: .full,
@@ -84,11 +89,79 @@ struct MarkdownPreview: NSViewRepresentable {
         }
 
         let out = NSMutableAttributedString()
+        var lastBlockIdentity: Int? = nil
         for run in parsed.runs {
+            // Block-level transition? Insert a paragraph break so headings
+            // don't jam into the next paragraph and adjacent paragraphs
+            // actually look separate.
+            let identity = run.presentationIntent?.components.first?.identity
+            if let last = lastBlockIdentity, identity != last {
+                out.append(NSAttributedString(string: "\n\n"))
+            }
+            lastBlockIdentity = identity
+
             let runStr = String(parsed[run.range].characters)
             out.append(styledRun(runStr, run: run))
         }
         return out
+    }
+
+    /// Rewrites `$$expr$$` and `$expr$` as `` `$$expr$$` `` and `` `$expr$` ``
+    /// so the markdown parser surfaces them as inline code. Conservative
+    /// scan — bails out on multi-line math or unbalanced delimiters.
+    static func wrapMath(_ s: String) -> String {
+        var out = ""
+        out.reserveCapacity(s.count)
+        let chars = Array(s)
+        var i = 0
+        while i < chars.count {
+            if chars[i] == "$" && (i == 0 || chars[i - 1] != "\\") {
+                // $$ block?
+                if i + 1 < chars.count, chars[i + 1] == "$" {
+                    if let end = findRange(chars, of: ["$", "$"], from: i + 2),
+                       !chars[(i + 2)..<end].contains("\n") {
+                        let inside = String(chars[(i + 2)..<end])
+                        if !inside.isEmpty {
+                            out += "`$$\(inside)$$`"
+                            i = end + 2
+                            continue
+                        }
+                    }
+                } else if let end = findIndex(chars, of: "$", from: i + 1),
+                          !chars[(i + 1)..<end].contains("\n") {
+                    let inside = String(chars[(i + 1)..<end])
+                    if !inside.isEmpty {
+                        out += "`$\(inside)$`"
+                        i = end + 1
+                        continue
+                    }
+                }
+            }
+            out.append(chars[i])
+            i += 1
+        }
+        return out
+    }
+
+    private static func findIndex(_ chars: [Character], of c: Character, from start: Int) -> Int? {
+        var i = start
+        while i < chars.count {
+            if chars[i] == c && (i == 0 || chars[i - 1] != "\\") { return i }
+            i += 1
+        }
+        return nil
+    }
+
+    private static func findRange(_ chars: [Character], of seq: [Character], from start: Int) -> Int? {
+        guard !seq.isEmpty else { return nil }
+        var i = start
+        while i + seq.count <= chars.count {
+            var match = true
+            for j in 0..<seq.count where chars[i + j] != seq[j] { match = false; break }
+            if match { return i }
+            i += 1
+        }
+        return nil
     }
 
     /// Build the NSAttributedString attributes for a single AttributedString

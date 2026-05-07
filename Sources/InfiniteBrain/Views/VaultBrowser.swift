@@ -8,6 +8,13 @@ struct VaultBrowser: View {
     @State private var selectedFile: URL?
     @State private var preview: String = ""
     @State private var query: String = ""
+    @State private var previewMode: PreviewMode = .rendered
+
+    enum PreviewMode: String, CaseIterable, Identifiable {
+        case rendered = "Rendered"
+        case raw = "Raw .md"
+        var id: String { rawValue }
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -94,26 +101,49 @@ struct VaultBrowser: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    if let url = selectedFile, let breadcrumb = Self.sourceBreadcrumb(for: url) {
-                        HStack(spacing: 6) {
+                    HStack(spacing: 8) {
+                        if let url = selectedFile, let breadcrumb = Self.sourceBreadcrumb(for: url) {
                             Image(systemName: "books.vertical")
                                 .foregroundStyle(.tertiary)
                             Text("from")
                                 .foregroundStyle(.tertiary)
                             Text(breadcrumb)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                         }
-                        .font(.caption)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.regularMaterial)
-                        Divider()
+                        Spacer()
+                        Picker("", selection: $previewMode) {
+                            ForEach(PreviewMode.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 180)
+                        .labelsHidden()
                     }
-                    MarkdownPreview(markdown: preview)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 24)
+                    .font(.caption)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial)
+                    Divider()
+
+                    switch previewMode {
+                    case .rendered:
+                        MarkdownPreview(markdown: preview)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 24)
+                    case .raw:
+                        ScrollView {
+                            Text(preview)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                                .padding(20)
+                        }
+                    }
                 }
             }
         }
