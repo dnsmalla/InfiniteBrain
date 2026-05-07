@@ -26,6 +26,8 @@ struct ContentView: View {
                 .tabItem { Label("Ingest", systemImage: "tray.and.arrow.down") }
             VaultBrowser()
                 .tabItem { Label("Vault", systemImage: "books.vertical") }
+            GraphView()
+                .tabItem { Label("Graph", systemImage: "circle.hexagongrid") }
             QueryView()
                 .tabItem { Label("Query", systemImage: "magnifyingglass") }
             SettingsView()
