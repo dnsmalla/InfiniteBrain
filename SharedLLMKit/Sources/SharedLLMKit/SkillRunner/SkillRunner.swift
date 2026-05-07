@@ -3,6 +3,7 @@ import Foundation
 public enum SkillRunnerError: Error, Equatable {
     case skillNotFound(String)
     case outputInvalidAfterRetry(lastError: String)
+    case hedgingDetected(phrase: String)
 }
 
 /// Loads a SKILL.md file, runs it through the configured LLMClient, and
@@ -29,14 +30,21 @@ public actor SkillRunner {
 
         var lastError = ""
         for attempt in 0..<2 {
-            let user = attempt == 0
-                ? userBase
-                : userBase + "\n\nNOTE: previous output failed validation: \(lastError). Return JSON only, matching the declared output schema exactly."
+            let retryHint: String
+            if lastError.contains("hedgingDetected") {
+                retryHint = "previous output contained hedging boilerplate (\(lastError)). Rewrite without meta-commentary about being an AI or about what the note is doing."
+            } else {
+                retryHint = "previous output failed validation: \(lastError). Return JSON only, matching the declared output schema exactly."
+            }
+            let user = attempt == 0 ? userBase : userBase + "\n\nNOTE: \(retryHint)"
             let raw = try await client.complete(system: system, user: user, responseSchema: nil)
             do {
                 let parsed = try Self.extractJSON(raw)
                 if let outputs = skill.manifest.outputs {
                     try validator.validate(parsed, schema: outputs)
+                }
+                if let phrase = Self.detectHedging(in: parsed) {
+                    throw SkillRunnerError.hedgingDetected(phrase: phrase)
                 }
                 return parsed
             } catch {
@@ -68,6 +76,44 @@ public actor SkillRunner {
         let data = (try? JSONSerialization.data(withJSONObject: input, options: [.prettyPrinted, .sortedKeys])) ?? Data()
         let json = String(data: data, encoding: .utf8) ?? "{}"
         return "INPUT:\n\(json)\n\nRespond with JSON only."
+    }
+
+    /// Walks every string value in the parsed output and returns the first
+    /// hedging phrase found, or nil. Per quality-bar.mdc.
+    static func detectHedging(in value: Any) -> String? {
+        let phrases = [
+            "as an ai", "as an a.i.",
+            "i cannot help",
+            "i can't help",
+            "i'm just a",
+            "this note discusses",
+            "this document discusses",
+            "in this note",
+            "as a language model",
+        ]
+        return walkStrings(value) { s in
+            let lower = s.lowercased()
+            return phrases.first(where: { lower.contains($0) })
+        }
+    }
+
+    /// Walks `[String: Any]` / `[Any]` / `String`, calling `find` on each
+    /// string value. Returns the first non-nil find result.
+    private static func walkStrings(_ v: Any, _ find: (String) -> String?) -> String? {
+        if let s = v as? String { return find(s) }
+        if let dict = v as? [String: Any] {
+            for (_, vv) in dict {
+                if let hit = walkStrings(vv, find) { return hit }
+            }
+            return nil
+        }
+        if let arr = v as? [Any] {
+            for item in arr {
+                if let hit = walkStrings(item, find) { return hit }
+            }
+            return nil
+        }
+        return nil
     }
 
     /// Truncate the user prompt to `cap` chars, preserving the start (which

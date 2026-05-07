@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.11.0] — 2026-05-07
+
+Hedging-text linting — the last unenforced clause of `quality-bar.mdc` is
+now real code.
+
+- `SkillRunner.detectHedging` walks every string in the parsed output and
+  rejects responses containing hedging boilerplate (`as an AI`,
+  `this note discusses`, `as a language model`, `I cannot help`, etc.).
+- A rejected response triggers the existing one-shot retry, with a
+  rewritten retry hint that tells the model exactly why and what to
+  avoid (no meta-commentary, no AI self-references).
+- `SkillRunnerError.hedgingDetected(phrase:)` is the new error case.
+  After two hedging-only outputs the runner throws
+  `outputInvalidAfterRetry` like any other validation failure.
+
+Tests
+- New `SkillRunnerHedgingTests` covers: clean output passes through with
+  no retry; one hedge then a clean output retries and succeeds; two
+  consecutive hedges throw.
+- 57 tests green (32 InfiniteBrain, 25 SharedLLMKit).
+
 ## [0.10.0] — 2026-05-07
 
 Token-budget enforcement — `token-budget.mdc` is no longer documentation
