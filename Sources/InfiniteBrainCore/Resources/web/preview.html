@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="katex.min.css">
+  <link rel="stylesheet" href="preview.css">
+  <script src="marked.min.js"></script>
+  <script src="katex.min.js"></script>
+  <script src="auto-render.min.js"></script>
+</head>
+<body>
+  <article id="content"></article>
+  <script>
+    // Configure marked for GitHub-flavoured rendering with code-block langs
+    // surfaced as classes (so a future highlight.js drop-in can colourise).
+    marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
+
+    // Called from Swift via evaluateJavaScript with the (already
+    // frontmatter-stripped) markdown body.
+    window.renderMarkdown = function(md) {
+      const article = document.getElementById('content');
+      article.innerHTML = marked.parse(md || '');
+      try {
+        renderMathInElement(article, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$',  right: '$',  display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true },
+          ],
+          throwOnError: false,
+          ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        });
+      } catch (e) {
+        // Math parsing failed — leave $...$ as text. Better than blank.
+        console.warn('katex auto-render failed:', e);
+      }
+    };
+
+    // Tell Swift the page is ready so it can push the first body in.
+    window.webkit?.messageHandlers?.ready?.postMessage('ready');
+  </script>
+</body>
+</html>

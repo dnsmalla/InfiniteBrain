@@ -10,6 +10,11 @@ public enum BundledResources {
     public static var rules: URL? {
         Bundle.module.url(forResource: "rules", withExtension: nil)
     }
+    /// Folder containing the markdown preview template + KaTeX + marked
+    /// assets. Used by the GUI's WKWebView.
+    public static var web: URL? {
+        Bundle.module.url(forResource: "web", withExtension: nil)
+    }
 
     /// Resolves the skills directory to use: the user-edited copy in the
     /// vault sidecar if present, otherwise the bundled fallback.

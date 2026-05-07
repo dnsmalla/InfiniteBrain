@@ -24,6 +24,7 @@ let package = Package(
             resources: [
                 .copy("Resources/skills"),
                 .copy("Resources/rules"),
+                .copy("Resources/web"),
             ]
         ),
         .executableTarget(

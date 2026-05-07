@@ -1,0 +1,139 @@
+/* InfiniteBrain note preview styling.
+   Mirrors GitHub's reading view: comfortable measure, restrained type
+   scale, code blocks with subtle background, math via KaTeX.
+   Uses CSS variables so dark/light mode flips automatically when the
+   webview reports the system appearance.
+*/
+
+:root {
+    color-scheme: light dark;
+    --fg: #1d1d1f;
+    --fg-muted: #5b5f66;
+    --bg: transparent;
+    --rule: #d4d6dc;
+    --code-bg: rgba(125, 125, 130, 0.10);
+    --link: #0a64ff;
+    --quote-bar: #d4d6dc;
+    --measure: 72ch;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --fg: #f1f3f5;
+        --fg-muted: #a8acb3;
+        --rule: #3a3d44;
+        --code-bg: rgba(255, 255, 255, 0.06);
+        --link: #5fa8ff;
+        --quote-bar: #3a3d44;
+    }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+}
+
+body {
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+article {
+    max-width: var(--measure);
+    margin: 24px auto;
+    padding: 0 24px 48px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 1.6em 0 0.6em;
+    letter-spacing: -0.01em;
+}
+h1 { font-size: 1.85em; margin-top: 0; }
+h2 { font-size: 1.45em; }
+h3 { font-size: 1.20em; }
+h4 { font-size: 1.05em; }
+h5, h6 { font-size: 1em; color: var(--fg-muted); }
+
+p {
+    margin: 0.9em 0;
+}
+
+a {
+    color: var(--link);
+    text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+ul, ol {
+    margin: 0.9em 0;
+    padding-left: 1.6em;
+}
+li { margin: 0.25em 0; }
+
+blockquote {
+    margin: 1em 0;
+    padding: 0.4em 1em;
+    border-left: 3px solid var(--quote-bar);
+    color: var(--fg-muted);
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 2em 0;
+}
+
+table {
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.95em;
+}
+th, td {
+    border: 1px solid var(--rule);
+    padding: 6px 12px;
+    text-align: left;
+}
+th { background: var(--code-bg); font-weight: 600; }
+
+code {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+
+pre {
+    background: var(--code-bg);
+    padding: 12px 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.45;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 0.85em;
+}
+
+img { max-width: 100%; }
+
+/* KaTeX overrides — slightly tighter display math, comfortable inline. */
+.katex { font-size: 1.05em; }
+.katex-display {
+    margin: 1em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 0;
+}
+.katex-display > .katex {
+    font-size: 1.1em;
+    text-align: center;
+    white-space: normal;
+}

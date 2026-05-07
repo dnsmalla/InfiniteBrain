@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.22.0] — 2026-05-07
+
+LaTeX math rendering in the Vault preview.
+
+The native AttributedString-based renderer couldn't typeset math —
+`$x^2$` showed as monospaced text. KaTeX is the standard offline
+math typesetter and works fine inside a WKWebView. Bundled, so no
+internet at runtime.
+
+What changed
+- `Resources/web/` ships the assets:
+  marked.min.js (markdown → HTML), katex.min.js,
+  katex.min.css, auto-render.min.js, the 20 KaTeX woff2 fonts,
+  plus a hand-written GitHub-style `preview.css` and a small
+  `preview.html` template that wires it all together.
+  ~640 KB added to the .app bundle.
+- `MarkdownPreview` is now a WKWebView wrapper. It loads
+  `preview.html` from the bundle (with `allowingReadAccessTo` so
+  marked/katex/fonts resolve), then JSON-encodes the
+  frontmatter-stripped markdown and pushes it to the page via
+  `evaluateJavaScript`.
+- Math delimiters recognised: `$x^2$`, `$$\sum_{i=0}^N i^2$$`, plus
+  the LaTeX-style `\(…\)` and `\[…\]`.
+- CSS supports light + dark mode automatically (`color-scheme: light dark`).
+- Code blocks, blockquotes, tables, lists, links all render with
+  GitHub-flavoured styling. Reading width capped at 72ch for
+  comfortable line length.
+
+The Rendered / Raw toggle from 0.21.1 still works — Raw shows the
+underlying markdown source verbatim.
+
+68 tests still green.
+
 ## [0.21.1] — 2026-05-07
 
 Vault preview fixes from the user feedback "current is not good".
