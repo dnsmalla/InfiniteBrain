@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.24.0] — 2026-05-07
+
+Removed the Schema tab — its content (16 nodes, 10 edges, with
+descriptions and examples) moved into the new Help window's
+"Architecture" section. One canonical reference instead of two
+overlapping ones.
+
+Standalone Help window — the canonical user reference, opened from
+the Help menu, ⌘?, or the new Open Help button in Settings.
+
+Why: the Schema tab gave users a colour-coded type list, but there
+was no place explaining how the pipeline works, where to tune
+prompts, what the Stop/Re-ingest buttons do, what to do when an
+ingest looks stuck, or what the keyboard shortcuts are. The
+information was spread across the README, CHANGELOG, and the user
+having to read source comments.
+
+What's in there
+- Basics: Getting Started · The Pipeline · How Ingest Works
+- Architecture: 16 Node Types (with examples and colours) · 10
+  Edge Types · Vault Layout (with directory tree)
+- How-to: Tuning the AI · Resume & Re-ingest · LLM Providers ·
+  Querying
+- Reference: Troubleshooting (7 common issues with concrete
+  resolutions) · Keyboard Shortcuts · About
+- Sidebar grouped into four sections; selection persists per
+  window-open.
+- Cards for every node type and edge type include the same
+  summary + example used by the Schema tab so the two views agree.
+
+How it's wired
+- New WindowGroup id "help" with default size 1000x720 and
+  min 880x600.
+- HelpMenuButton in CommandGroup(replacing: .help) keeps the
+  system Help menu showing 'InfiniteBrain Help' instead of the
+  empty default.
+- Settings tab gained an Open Help button next to its title.
+- ⌘? and the menu both work from any tab.
+
+68 tests still green; pure UI.
+
 ## [0.23.0] — 2026-05-07
 
 Schema tab — surfaces the Infinite Brain architecture so users can

@@ -14,6 +14,31 @@ struct InfiniteBrainApp: App {
                 .frame(minWidth: 1100, minHeight: 720)
         }
         .windowStyle(.titleBar)
+        .commands {
+            CommandGroup(replacing: .help) {
+                HelpMenuButton()
+            }
+        }
+
+        // Standalone Help window. Opened via Help → InfiniteBrain Help
+        // (Cmd-?) or from the Settings tab. Lives outside the main window
+        // so the user can keep it open while ingesting.
+        WindowGroup("InfiniteBrain Help", id: "help") {
+            HelpView()
+                .frame(minWidth: 880, minHeight: 600)
+        }
+        .defaultSize(width: 1000, height: 720)
+    }
+}
+
+/// SwiftUI doesn't let you put `openWindow` calls inside a CommandGroup
+/// builder directly (no environment yet), so we wrap it in a tiny
+/// helper view that pulls the action from the environment.
+private struct HelpMenuButton: View {
+    @Environment(\.openWindow) private var openWindow
+    var body: some View {
+        Button("InfiniteBrain Help") { openWindow(id: "help") }
+            .keyboardShortcut("?", modifiers: .command)
     }
 }
 
@@ -29,8 +54,6 @@ struct ContentView: View {
                     .tabItem { Label("Graph", systemImage: "circle.hexagongrid") }
                 QueryView()
                     .tabItem { Label("Query", systemImage: "magnifyingglass") }
-                SchemaView()
-                    .tabItem { Label("Schema", systemImage: "rectangle.3.group") }
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }

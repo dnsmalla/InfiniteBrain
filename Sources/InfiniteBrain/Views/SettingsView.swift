@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
+    @Environment(\.openWindow) private var openWindow
     @State private var apiKeyDraft: String = ""
     @State private var apiKeySaved: Bool = false
     @State private var showingPicker = false
@@ -36,11 +37,20 @@ struct SettingsView: View {
     // MARK: - Cards
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Settings").font(.title.bold())
-            Text("Configure your vault and the AI backend that runs every skill call.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Settings").font(.title.bold())
+                Text("Configure your vault and the AI backend that runs every skill call.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                openWindow(id: "help")
+            } label: {
+                Label("Open Help", systemImage: "questionmark.circle")
+            }
+            .keyboardShortcut("?", modifiers: .command)
         }
     }
 
