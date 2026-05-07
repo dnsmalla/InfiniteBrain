@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.10.0] — 2026-05-07
+
+Token-budget enforcement — `token-budget.mdc` is no longer documentation
+only. Per-skill input caps are now declared in SKILL.md frontmatter and
+applied by SkillRunner before the API call.
+
+- New optional `max_input_chars` frontmatter key. Uses the well-known
+  4-chars-per-token heuristic (good enough for English; the model is
+  told the input was clipped so it can still produce useful output).
+- SkillRunner truncates the user prompt when it exceeds the cap and
+  appends a `[truncated]` marker.
+- Caps applied (matching the table in `Resources/rules/token-budget.mdc`):
+  - classify-node: 6000 chars
+  - summarize-note: 6000 chars
+  - reconcile-note: 16000 chars
+  - improve-note: 16000 chars
+  - infer-edges: 16000 chars
+- `atomize-text` is uncapped because the orchestrator already chunks
+  before calling it.
+
+Tests
+- New `SkillRunnerBudgetTests`: oversized prompts get truncated with the
+  marker; uncapped skills are unaffected.
+- 54 tests green (32 InfiniteBrain, 22 SharedLLMKit).
+
 ## [0.9.0] — 2026-05-07
 
 Two-pass query — saves tokens on every question by sending summaries first

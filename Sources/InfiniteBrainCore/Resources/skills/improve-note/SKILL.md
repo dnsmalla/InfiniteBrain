@@ -2,6 +2,7 @@
 name: improve-note
 description: Rewrites an existing note in place, merging new information from a candidate while preserving identity.
 model: claude-sonnet-4-6
+max_input_chars: 16000
 inputs:
   existing: object            # full existing note
   candidate: object           # candidate unit that triggered the improvement

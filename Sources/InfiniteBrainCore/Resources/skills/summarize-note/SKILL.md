@@ -2,6 +2,7 @@
 name: summarize-note
 description: Writes a single-sentence ≤50-token summary used for cheap retrieval.
 model: claude-haiku-4-5-20251001
+max_input_chars: 6000
 inputs:
   title: string
   body: string

@@ -16,6 +16,7 @@ public struct Skill: Sendable, Equatable {
         public var model: String?
         public var inputs: [String: String]?      // field → simple type tag
         public var outputs: [String: String]?
+        public var maxInputChars: Int?            // hard cap on the user prompt
     }
 
     public let manifest: Manifest
@@ -67,6 +68,7 @@ public struct Skill: Sendable, Equatable {
         var model: String?
         var inputs: [String: String]?
         var outputs: [String: String]?
+        var maxInputChars: Int?
 
         var i = 0
         while i < lines.count {
@@ -107,9 +109,10 @@ public struct Skill: Sendable, Equatable {
 
             let v = unquote(valuePart)
             switch key {
-            case "name":        name = v
-            case "description": description = v
-            case "model":       model = v
+            case "name":            name = v
+            case "description":     description = v
+            case "model":           model = v
+            case "max_input_chars": maxInputChars = Int(v)
             default: break
             }
             i += 1
@@ -118,7 +121,14 @@ public struct Skill: Sendable, Equatable {
         guard let name else { throw SkillParseError.missingRequiredField("name") }
         guard let description else { throw SkillParseError.missingRequiredField("description") }
 
-        return Manifest(name: name, description: description, model: model, inputs: inputs, outputs: outputs)
+        return Manifest(
+            name: name,
+            description: description,
+            model: model,
+            inputs: inputs,
+            outputs: outputs,
+            maxInputChars: maxInputChars
+        )
     }
 
     private static func stripComment(_ line: String) -> String {

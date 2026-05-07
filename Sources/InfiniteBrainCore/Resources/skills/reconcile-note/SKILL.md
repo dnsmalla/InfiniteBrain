@@ -2,6 +2,7 @@
 name: reconcile-note
 description: Decides whether a candidate unit is a duplicate, an improvement, or genuinely new.
 model: claude-sonnet-4-6
+max_input_chars: 16000
 inputs:
   candidate: object           # { title, body, suggested_type }
   nearest:   array            # top-K vault notes by embedding similarity

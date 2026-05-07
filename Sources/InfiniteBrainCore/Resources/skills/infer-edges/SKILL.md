@@ -2,6 +2,7 @@
 name: infer-edges
 description: For a new note, identifies semantic edges to existing notes using the 10 edge types.
 model: claude-sonnet-4-6
+max_input_chars: 16000
 inputs:
   new_note: object            # { id, type, title, summary, body }
   candidates: array           # nearest-neighbour summaries from the vault

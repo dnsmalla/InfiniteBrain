@@ -2,6 +2,7 @@
 name: classify-node
 description: Assigns one of 16 node types to an atomic unit, with a confidence score and rationale.
 model: claude-sonnet-4-6
+max_input_chars: 6000
 inputs:
   unit_title: string
   unit_body: string

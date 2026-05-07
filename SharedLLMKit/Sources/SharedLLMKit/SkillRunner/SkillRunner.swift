@@ -21,7 +21,11 @@ public actor SkillRunner {
     public func run(_ skillName: String, input: [String: Any]) async throws -> [String: Any] {
         let skill = try loadSkill(skillName)
         let system = buildSystemPrompt(skill: skill)
-        let userBase = buildUserPrompt(input: input)
+        let rawUser = buildUserPrompt(input: input)
+        // Enforce per-skill input budget (token-budget.mdc). 4 chars ≈ 1 token
+        // is good enough for English; the model is told the input was clipped
+        // so it can produce useful output anyway.
+        let userBase = Self.applyBudget(rawUser, cap: skill.manifest.maxInputChars)
 
         var lastError = ""
         for attempt in 0..<2 {
@@ -64,6 +68,17 @@ public actor SkillRunner {
         let data = (try? JSONSerialization.data(withJSONObject: input, options: [.prettyPrinted, .sortedKeys])) ?? Data()
         let json = String(data: data, encoding: .utf8) ?? "{}"
         return "INPUT:\n\(json)\n\nRespond with JSON only."
+    }
+
+    /// Truncate the user prompt to `cap` chars, preserving the start (which
+    /// usually carries the structural intro like `INPUT:`) and dropping the
+    /// tail. The marker tells the model that some content was clipped.
+    static func applyBudget(_ user: String, cap: Int?) -> String {
+        guard let cap, cap > 0, user.count > cap else { return user }
+        let marker = "\n\n[truncated]"
+        let keep = max(0, cap - marker.count)
+        let head = user.prefix(keep)
+        return String(head) + marker
     }
 
     /// Extracts a JSON object from a model response. Tolerates common
