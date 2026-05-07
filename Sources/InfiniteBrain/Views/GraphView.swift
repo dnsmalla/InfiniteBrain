@@ -3,6 +3,7 @@ import InfiniteBrainCore
 
 struct GraphView: View {
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var ingest: IngestViewModel
     @State private var data: GraphData = .init(nodes: [], edges: [])
     @State private var selected: GraphNode?
     @State private var loading = false
@@ -47,6 +48,9 @@ struct GraphView: View {
                     .onChange(of: geo.size) { _, new in
                         canvasSize = new
                         data = GraphLayout.compute(notes: notesCache, canvasSize: new)
+                    }
+                    .onChange(of: ingest.lastResult) { _, _ in
+                        Task { await reload() }
                     }
 
                     if loading {

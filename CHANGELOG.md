@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1] — 2026-05-07
+
+UX fix: VaultBrowser and GraphView now auto-refresh after an ingest
+completes. Previously you had to click Refresh manually or wait for the
+next tab switch. Wired via `.onChange(of: ingest.lastResult)` — both
+views observe `IngestViewModel` and re-read the vault when a new
+IngestResult lands.
+
 ## [0.12.0] — 2026-05-07
 
 `infb reindex` — recovery path when the embedding index drifts from the

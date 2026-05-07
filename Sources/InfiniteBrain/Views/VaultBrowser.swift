@@ -3,6 +3,7 @@ import InfiniteBrainCore
 
 struct VaultBrowser: View {
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var ingest: IngestViewModel
     @State private var notesByType: [(type: NodeType, files: [URL])] = []
     @State private var selectedFile: URL?
     @State private var preview: String = ""
@@ -36,6 +37,7 @@ struct VaultBrowser: View {
             }
         }
         .onAppear(perform: refresh)
+        .onChange(of: ingest.lastResult) { _, _ in refresh() }
         .onChange(of: selectedFile) { _, new in
             if let new { preview = (try? String(contentsOf: new, encoding: .utf8)) ?? "" }
         }
