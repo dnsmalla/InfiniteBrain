@@ -82,7 +82,7 @@ public actor Orchestrator {
     public func ingest(file: URL, into vault: Vault) async throws -> IngestResult {
         let store = VaultStore(vault: vault)
         let checkpoints = CheckpointStore(vault: vault)
-        let text = try Self.readText(from: file)
+        let text = try await readText(from: file)
         let fileHash = Self.hash(text)
 
         let chunks = TextChunker().chunk(text, targetChars: chunkSize)
@@ -400,10 +400,14 @@ public actor Orchestrator {
 
     // MARK: - Helpers
 
-    private static func readText(from url: URL) throws -> String {
+    private func readText(from url: URL) async throws -> String {
         switch url.pathExtension.lowercased() {
         case "pdf":
             let pages = try PDFExtractor().extract(url)
+            let ocred = pages.filter(\.usedOCR).count
+            if ocred > 0 {
+                await progress("OCR'd \(ocred) of \(pages.count) page(s) from \(url.lastPathComponent)")
+            }
             return pages.map(\.text).joined(separator: "\n\n")
         default:
             return try String(contentsOf: url, encoding: .utf8)

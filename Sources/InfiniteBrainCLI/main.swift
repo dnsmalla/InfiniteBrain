@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import InfiniteBrainCore
 import SharedLLMKit
 
@@ -42,6 +43,10 @@ struct InfiniteBrainCLI {
         let vault = Vault(root: URL(fileURLWithPath: vaultPath))
         try VaultInitializer().ensureSeeded(vault: vault)
         FileHandle.standardError.write(Data("provider: \(provider.displayName)\n".utf8))
+
+        if parsed.force {
+            try await wipePreviousIngests(files: files, vault: vault)
+        }
 
         let skillsRoot = BundledResources.skillsRoot(for: vault)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
@@ -130,6 +135,7 @@ struct InfiniteBrainCLI {
         var provider: LLMProviderKind?
         var topK: Int?
         var chunkSize: Int?
+        var force: Bool = false
         var positional: [String] = []
     }
 
@@ -150,11 +156,42 @@ struct InfiniteBrainCLI {
             case "--provider":   i += 1; p.provider = i < args.count ? LLMProviderKind(rawValue: args[i]) : nil
             case "--top-k":      i += 1; p.topK = i < args.count ? Int(args[i]) : nil
             case "--chunk-size": i += 1; p.chunkSize = i < args.count ? Int(args[i]) : nil
+            case "--force":      p.force = true
             default:             p.positional.append(a)
             }
             i += 1
         }
         return p
+    }
+
+    static func wipePreviousIngests(files: [String], vault: Vault) async throws {
+        let store = VaultStore(vault: vault)
+        let cps = CheckpointStore(vault: vault)
+        for f in files {
+            let url = URL(fileURLWithPath: f)
+            let text: String
+            do {
+                let pages = try PDFExtractor().extract(url)
+                text = pages.map(\.text).joined(separator: "\n\n")
+            } catch {
+                guard let s = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                text = s
+            }
+            let hash = "sha256-" + sha256Hex(text)
+            let all = (try? await store.allNotes()) ?? []
+            guard let prior = all.first(where: { $0.type == .source && $0.contentHash == hash }) else {
+                continue
+            }
+            let toDelete = all.filter { $0.id == prior.id || $0.sources.contains(prior.id) }
+            for n in toDelete { try? await store.delete(id: n.id) }
+            try? await cps.delete(fileHash: hash)
+            FileHandle.standardError.write(Data("wiped previous ingest of \(url.lastPathComponent): \(toDelete.count) note(s)\n".utf8))
+        }
+    }
+
+    static func sha256Hex(_ s: String) -> String {
+        let digest = SHA256.hash(data: Data(s.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     static func makeClient(provider: LLMProviderKind, apiKey: String?) throws -> LLMClient {
@@ -174,7 +211,7 @@ struct InfiniteBrainCLI {
         InfiniteBrain CLI — \(version())
 
         usage:
-          infb ingest <file…> --vault <path> [--provider P] [--api-key K] [--chunk-size N]
+          infb ingest <file…> --vault <path> [--provider P] [--api-key K] [--chunk-size N] [--force]
           infb query <question…> --vault <path> [--provider P] [--api-key K] [--top-k N]
           infb seed <vault-path>
           infb reindex <vault-path>

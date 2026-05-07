@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.19.0] — 2026-05-07
+
+PDF OCR fallback + force re-ingest button.
+
+OCR for scanned books
+- PDFExtractor now detects pages where PDFKit returns near-empty text
+  (under 50 chars — typical for scanned PDFs and image-only pages) and
+  rasterises them at ~144 DPI for Vision's `VNRecognizeTextRequest` to
+  recognise. Recovered text replaces the empty PDFKit output.
+- `Page` struct gains a `usedOCR: Bool` flag; the orchestrator emits
+  a progress line `OCR'd N of M page(s)` when any page falls back so
+  the user can tell the feature kicked in.
+- Recognition language is en-US for now; configurable later.
+
+Force re-ingest
+- New "Re-ingest" button next to Run/Clear in the Ingest tab. Opens a
+  destructive confirmation dialog; on confirm, deletes the source
+  note + every atomic note citing it + the matching checkpoint for
+  each dropped file, then triggers Run automatically.
+- CLI parity: `infb ingest <file...> --force` does the same wipe
+  before running.
+- Useful when the user wants to re-process content with a different
+  provider, or when they've edited the skill files and want to re-run
+  fresh against the new prompts.
+
+68 tests still green.
+
 ## [0.18.0] — 2026-05-07
 
 Two limitations addressed.

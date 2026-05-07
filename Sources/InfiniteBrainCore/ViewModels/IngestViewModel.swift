@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CryptoKit
 import SharedLLMKit
 
 @MainActor
@@ -43,6 +44,55 @@ public final class IngestViewModel: ObservableObject {
             await self?.run(settings: settings)
             self?.runTask = nil
         }
+    }
+
+    /// Delete the source note + every atomic note citing it + the matching
+    /// checkpoint, for each currently-dropped file. Used by the Re-ingest
+    /// button so users can wipe an in-progress or fully-done ingest and
+    /// start fresh without manually editing the vault folder.
+    public func wipePrevious(settings: AppSettings) async {
+        guard let vaultURL = settings.vaultPath else {
+            append("Pick a vault folder in Settings first.")
+            return
+        }
+        guard !droppedFiles.isEmpty else {
+            append("Drop files into the panel above first.")
+            return
+        }
+        let vault = Vault(root: vaultURL)
+        let store = VaultStore(vault: vault)
+        let cps = CheckpointStore(vault: vault)
+
+        for file in droppedFiles {
+            let text: String
+            do {
+                let pages = try PDFExtractor().extract(file)
+                text = pages.map(\.text).joined(separator: "\n\n")
+            } catch {
+                guard let s = try? String(contentsOf: file, encoding: .utf8) else {
+                    append("could not read \(file.lastPathComponent)")
+                    continue
+                }
+                text = s
+            }
+            let hash = Self.sha256Hex(text)
+            let all = (try? await store.allNotes()) ?? []
+            guard let prior = all.first(where: { $0.type == .source && $0.contentHash == hash }) else {
+                append("no previous ingest found for \(file.lastPathComponent)")
+                continue
+            }
+            let toDelete = all.filter { $0.id == prior.id || $0.sources.contains(prior.id) }
+            for n in toDelete { try? await store.delete(id: n.id) }
+            try? await cps.delete(fileHash: hash)
+            append("wiped \(file.lastPathComponent): removed \(toDelete.count) note(s)")
+        }
+        // Tell observers the vault changed.
+        lastResult = IngestResult(skipped: 0)
+    }
+
+    private static func sha256Hex(_ s: String) -> String {
+        let digest = SHA256.hash(data: Data(s.utf8))
+        return "sha256-" + digest.map { String(format: "%02x", $0) }.joined()
     }
 
     public func run(settings: AppSettings) async {

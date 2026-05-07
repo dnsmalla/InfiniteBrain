@@ -6,6 +6,7 @@ struct IngestView: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var ingest: IngestViewModel
     @State private var isTargeted = false
+    @State private var showingWipeConfirm = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -94,6 +95,14 @@ struct IngestView: View {
             .tint(ingest.isRunning ? .red : .accentColor)
             .disabled(!ingest.isRunning && ingest.droppedFiles.isEmpty)
 
+            Button {
+                showingWipeConfirm = true
+            } label: {
+                Label("Re-ingest", systemImage: "arrow.counterclockwise.circle")
+            }
+            .help("Delete all notes and the checkpoint for the dropped file(s), then re-run.")
+            .disabled(ingest.isRunning || ingest.droppedFiles.isEmpty)
+
             Button("Clear", role: .destructive) { ingest.clear() }
                 .disabled(ingest.isRunning)
 
@@ -104,6 +113,19 @@ struct IngestView: View {
             if let r = ingest.lastResult {
                 ResultPill(result: r)
             }
+        }
+        .confirmationDialog(
+            "Re-ingest will delete all notes and the checkpoint for the dropped file(s), then run from scratch.",
+            isPresented: $showingWipeConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Wipe and re-ingest", role: .destructive) {
+                Task {
+                    await ingest.wipePrevious(settings: settings)
+                    ingest.toggle(settings: settings)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
