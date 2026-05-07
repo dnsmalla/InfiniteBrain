@@ -87,16 +87,48 @@ struct VaultBrowser: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    Text(preview)
-                        .font(.system(.body, design: .monospaced))
+                VStack(alignment: .leading, spacing: 0) {
+                    if let url = selectedFile, let breadcrumb = Self.sourceBreadcrumb(for: url) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "books.vertical")
+                                .foregroundStyle(.tertiary)
+                            Text("from")
+                                .foregroundStyle(.tertiary)
+                            Text(breadcrumb)
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .padding(20)
+                        .background(.regularMaterial)
+                        Divider()
+                    }
+                    ScrollView {
+                        Text(preview)
+                            .font(.system(.body, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .padding(20)
+                    }
                 }
             }
         }
         .background(.background.secondary)
+    }
+
+    /// Pulls the source folder name from a note's path and humanises it.
+    /// Returns nil for notes in the legacy `notes/<type>/*.md` layout.
+    private static func sourceBreadcrumb(for url: URL) -> String? {
+        let parts = url.pathComponents
+        guard let notesIdx = parts.firstIndex(of: "notes"),
+              notesIdx + 2 < parts.count else { return nil }
+        let folder = parts[notesIdx + 1]
+        // Skip if the immediate child of notes/ is a NodeType (legacy layout).
+        if NodeType(rawValue: folder) != nil { return nil }
+        return folder
+            .replacingOccurrences(of: "-pdf", with: ".pdf")
+            .replacingOccurrences(of: "-", with: " ")
     }
 
     private var emptyState: some View {

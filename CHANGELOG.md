@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.18.0] — 2026-05-07
+
+Two limitations addressed.
+
+Source breadcrumb in VaultBrowser preview
+- A small "from <source-name>" header now sits above each note's
+  preview pane, derived from the file path so it's free to compute
+  and works for both per-source and legacy layouts. Once you have
+  multiple PDFs ingested it becomes obvious which book a note came
+  from.
+
+Resume integration test
+- New `ResumeIntegrationTests` exercises the full path:
+  1. ingest with a fake LLM that fails atomize after chunk 1,
+     verify checkpoint records partial progress (some chunks
+     complete, some not, isComplete=false)
+  2. swap to a fake that always succeeds and re-run, verify the
+     checkpoint reaches isComplete=true and all chunks marked.
+- 38 InfiniteBrain (+1) + 30 SharedLLMKit = 68 green. Test wall-clock
+  ~11s due to deliberate retry sleeps in the orchestrator's chunk
+  failure path; runs once on push.
+
+Known limitations not yet addressed (deferred)
+- PDF OCR for scanned books — biggest user value remaining; needs
+  Vision-framework integration; separate effort.
+- Force re-ingest UI button — currently requires deleting the
+  source folder + checkpoint file by hand.
+
 ## [0.17.1] — 2026-05-07
 
 Fix: Vault tab showed "empty" after the per-source folder layout
