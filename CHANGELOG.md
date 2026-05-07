@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.20.0] — 2026-05-07
+
+Content-selection rules in `atomize-text` rewritten as a real
+decision framework instead of a deny-list.
+
+The old "skip these" section had ~7 bullet points listing categories
+to drop. It worked for clear cases (TOC, copyright) but didn't help
+the model for ambiguous chunks: foreword that argues a position?
+appendix? footnote? abstract? Now the skill has:
+
+- **Positive criterion** — a checklist of nine "knowledge density"
+  signals (claims, definitions, arguments, decisions with rationale,
+  methods, original data, questions, patterns, substantive narrative).
+  If 30% of the chunk meets any signal, atomise.
+- **Negative criterion** — administrative-only categories (publishing
+  metadata, navigation aids, bibliographic references, legal
+  boilerplate, OCR fragments) with concrete pattern hints (dotted
+  leaders, term→page lookups).
+- **Edge-case table** — abstract, footnotes, exercises, code listings,
+  errata, cover blurb, author bio, foreword, appendix, glossary,
+  marketing copy. One row each, explicit decision.
+- **Partial chunks** — clear instructions for keeping substantive
+  paragraphs even when they're surrounded by boilerplate, and not
+  fabricating transitions.
+- **Tie-breaker** — when genuinely unsure, prefer to keep and let the
+  classifier's confidence path handle it. Better to over-quarantine
+  than silently drop material.
+
+Prompt is roughly 3× longer but ~2k chars — well within the
+token-budget cap (`max_input_chars: 16000` was already set
+elsewhere; atomize stays uncapped).
+
+Tests still 68 green; no code change, just a richer skill prompt.
+
 ## [0.19.0] — 2026-05-07
 
 PDF OCR fallback + force re-ingest button.
