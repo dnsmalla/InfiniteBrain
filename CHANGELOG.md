@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.17.1] — 2026-05-07
+
+Fix: Vault tab showed "empty" after the per-source folder layout
+landed in 0.16.0. The notes were on disk, the orchestrator wrote
+them, but `VaultBrowser.refresh()` was still walking
+`notes/<type>/*.md` (one level deep) when the new layout is
+`notes/<source-slug>/<type>/*.md` (two levels). NodeType.rawValue
+didn't match the source-slug folder name so every per-source note
+got skipped.
+
+`refresh()` now walks both layouts: if a top-level folder name
+matches a NodeType, treat it as legacy; otherwise descend one more
+level and pick up type subfolders. Same fix the VaultStore got in
+0.16.0.
+
 ## [0.17.0] — 2026-05-07
 
 Two requested features.
