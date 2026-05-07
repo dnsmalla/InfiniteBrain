@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.13.0] — 2026-05-07
+
+LLM provider choice — use a locally installed `claude`, `codex`, or
+`cursor` CLI instead of paying for the Anthropic API. Pattern mirrors
+`ucp-demo`'s `BaseCLIProvider` shape.
+
+SharedLLMKit
+- New `LLMProviderKind` enum: `anthropic` (default) | `claude-cli` |
+  `codex-cli` | `cursor-cli`.
+- New `LLMClientFactory.make(provider:apiKey:)` builds the right concrete
+  `LLMClient` and `isAvailable(...)` lets the GUI gate the Run button.
+- Three CLI clients — `ClaudeCLIClient`, `CodexCLIClient`,
+  `CursorCLIClient` — shell out to the installed binary via a shared
+  `CLIProcessRunner` (Process + pipes + timeout). Argument shapes match
+  `ucp-demo` exactly:
+    - `claude -p <prompt> --output-format text --allow-dangerously-skip-permissions`
+    - `codex exec --output-last-message <file> --sandbox read-only --skip-git-repo-check`
+    - `cursor agent --trust --print <prompt>`
+- New `CLILocator` walks common install paths (Homebrew, /usr/local,
+  npm-global, ~/.local/bin, …) then falls back to `/usr/bin/which`.
+
+App + CLI integration
+- AppSettings persists `provider` in UserDefaults (default: anthropic).
+  `isConfigured` now uses the factory's availability check, so the API
+  key requirement only applies when anthropic is selected.
+- Settings tab gains a Provider picker with live status: green check +
+  resolved path when the CLI is installed, orange warning when missing.
+  The API-key section only shows for the anthropic provider.
+- IngestViewModel and QueryViewModel route through the factory; CLI
+  failures get specific error messages ("install the binary" vs "add an
+  API key").
+- `infb` gains `--provider` flag and `INFINITEBRAIN_PROVIDER` env var.
+  Examples in `infb help`.
+
+Tests
+- New `CLIClientArgumentTests` pins the per-CLI argument shapes so a
+  drift in any of the binaries' interface is caught at build time.
+- 63 tests green (33 InfiniteBrain, 30 SharedLLMKit).
+
 ## [0.12.1] — 2026-05-07
 
 UX fix: VaultBrowser and GraphView now auto-refresh after an ingest

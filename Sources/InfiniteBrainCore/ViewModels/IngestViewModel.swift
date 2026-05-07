@@ -29,23 +29,34 @@ public final class IngestViewModel: ObservableObject {
             append("Pick a vault folder in Settings first.")
             return
         }
-        guard let apiKey = (try? settings.apiKey()) ?? nil, !apiKey.isEmpty else {
-            append("Add an Anthropic API key in Settings first.")
-            return
-        }
         guard !droppedFiles.isEmpty else {
             append("Drop files into the panel above.")
             return
         }
 
+        let apiKey = (try? settings.apiKey()) ?? nil
+        let client: LLMClient
+        do {
+            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey)
+        } catch LLMClientFactory.FactoryError.missingAPIKey {
+            append("Anthropic provider needs an API key — add one in Settings or switch to a CLI provider.")
+            return
+        } catch CLIClientError.executableNotFound(let name) {
+            append("`\(name)` CLI not found on PATH. Install it or pick a different provider.")
+            return
+        } catch {
+            append("provider error: \(error.localizedDescription)")
+            return
+        }
+
         isRunning = true
         defer { isRunning = false }
+        append("provider: \(settings.provider.displayName)")
 
         let vault = Vault(root: vaultURL)
         do { try VaultInitializer().ensureSeeded(vault: vault) }
         catch { append("could not seed vault: \(error.localizedDescription)") }
         let skillsRoot = Self.skillsRoot(for: vault)
-        let client = AnthropicClient(apiKey: apiKey)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
 
         let indexURL = vault.sidecar.appendingPathComponent("embeddings.json")

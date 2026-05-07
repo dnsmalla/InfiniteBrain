@@ -1,21 +1,26 @@
 import Foundation
+import SharedLLMKit
 
-/// User-facing app configuration: the chosen vault folder and the Anthropic
-/// API key. Vault path lives in UserDefaults; the API key lives in the
-/// Keychain. Both are injectable so tests can substitute fakes.
+/// User-facing app configuration: vault folder, LLM provider choice, and
+/// Anthropic API key. Vault path + provider live in UserDefaults; the API
+/// key lives in the Keychain. Both stores are injectable so tests can
+/// substitute fakes.
 public final class AppSettings: ObservableObject, @unchecked Sendable {
     private static let vaultPathKey = "vaultPath"
     private static let apiKeyKey = "anthropicAPIKey"
+    private static let providerKey = "llmProvider"
 
     private let defaults: UserDefaults
     private let keychain: KeychainStore
 
     @Published public private(set) var vaultPathStorage: String?
+    @Published public private(set) var providerRaw: String
 
     public init(defaults: UserDefaults = .standard, keychain: KeychainStore = SystemKeychain()) {
         self.defaults = defaults
         self.keychain = keychain
         self.vaultPathStorage = defaults.string(forKey: Self.vaultPathKey)
+        self.providerRaw = defaults.string(forKey: Self.providerKey) ?? LLMProviderKind.anthropic.rawValue
     }
 
     public var vaultPath: URL? {
@@ -30,6 +35,14 @@ public final class AppSettings: ObservableObject, @unchecked Sendable {
         }
     }
 
+    public var provider: LLMProviderKind {
+        get { LLMProviderKind(rawValue: providerRaw) ?? .anthropic }
+        set {
+            providerRaw = newValue.rawValue
+            defaults.set(newValue.rawValue, forKey: Self.providerKey)
+        }
+    }
+
     public func apiKey() throws -> String? {
         try keychain.get(Self.apiKeyKey)
     }
@@ -40,6 +53,7 @@ public final class AppSettings: ObservableObject, @unchecked Sendable {
 
     public var isConfigured: Bool {
         guard vaultPath != nil else { return false }
-        return ((try? apiKey()) ?? nil)?.isEmpty == false
+        let key = (try? apiKey()) ?? nil
+        return LLMClientFactory.isAvailable(provider, apiKey: key)
     }
 }

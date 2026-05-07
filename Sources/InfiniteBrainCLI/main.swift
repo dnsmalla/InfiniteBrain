@@ -34,15 +34,17 @@ struct InfiniteBrainCLI {
     static func runIngest(_ args: [String]) async throws {
         let parsed = parseFlags(args)
         guard let vaultPath = parsed.vault else { fail("missing --vault (or set INFINITEBRAIN_VAULT)") }
-        guard let apiKey   = parsed.apiKey else { fail("missing --api-key (or set ANTHROPIC_API_KEY)") }
         let files = parsed.positional
         guard !files.isEmpty else { fail("specify at least one file to ingest") }
 
+        let provider = parsed.provider ?? .anthropic
+        let client = try makeClient(provider: provider, apiKey: parsed.apiKey)
         let vault = Vault(root: URL(fileURLWithPath: vaultPath))
         try VaultInitializer().ensureSeeded(vault: vault)
+        FileHandle.standardError.write(Data("provider: \(provider.displayName)\n".utf8))
 
         let skillsRoot = BundledResources.skillsRoot(for: vault)
-        let runner = SkillRunner(client: AnthropicClient(apiKey: apiKey), skillsRoot: skillsRoot)
+        let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
         let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
         try? await index.load()
         let orch = Orchestrator(
@@ -69,13 +71,14 @@ struct InfiniteBrainCLI {
     static func runQuery(_ args: [String]) async throws {
         let parsed = parseFlags(args)
         guard let vaultPath = parsed.vault else { fail("missing --vault (or set INFINITEBRAIN_VAULT)") }
-        guard let apiKey   = parsed.apiKey else { fail("missing --api-key (or set ANTHROPIC_API_KEY)") }
         let question = parsed.positional.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty else { fail("specify a question") }
 
+        let provider = parsed.provider ?? .anthropic
+        let client = try makeClient(provider: provider, apiKey: parsed.apiKey)
         let vault = Vault(root: URL(fileURLWithPath: vaultPath))
         let skillsRoot = BundledResources.skillsRoot(for: vault)
-        let runner = SkillRunner(client: AnthropicClient(apiKey: apiKey), skillsRoot: skillsRoot)
+        let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
         let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
         try? await index.load()
         let service = QueryService(
@@ -124,6 +127,7 @@ struct InfiniteBrainCLI {
     struct Parsed {
         var vault: String?
         var apiKey: String?
+        var provider: LLMProviderKind?
         var topK: Int?
         var chunkSize: Int?
         var positional: [String] = []
@@ -133,6 +137,9 @@ struct InfiniteBrainCLI {
         var p = Parsed()
         p.vault  = ProcessInfo.processInfo.environment["INFINITEBRAIN_VAULT"]
         p.apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
+        if let raw = ProcessInfo.processInfo.environment["INFINITEBRAIN_PROVIDER"] {
+            p.provider = LLMProviderKind(rawValue: raw)
+        }
 
         var i = 0
         while i < args.count {
@@ -140,6 +147,7 @@ struct InfiniteBrainCLI {
             switch a {
             case "--vault":      i += 1; p.vault = i < args.count ? args[i] : nil
             case "--api-key":    i += 1; p.apiKey = i < args.count ? args[i] : nil
+            case "--provider":   i += 1; p.provider = i < args.count ? LLMProviderKind(rawValue: args[i]) : nil
             case "--top-k":      i += 1; p.topK = i < args.count ? Int(args[i]) : nil
             case "--chunk-size": i += 1; p.chunkSize = i < args.count ? Int(args[i]) : nil
             default:             p.positional.append(a)
@@ -149,6 +157,16 @@ struct InfiniteBrainCLI {
         return p
     }
 
+    static func makeClient(provider: LLMProviderKind, apiKey: String?) throws -> LLMClient {
+        do {
+            return try LLMClientFactory.make(provider: provider, apiKey: apiKey)
+        } catch LLMClientFactory.FactoryError.missingAPIKey {
+            fail("--provider anthropic needs --api-key (or ANTHROPIC_API_KEY)")
+        } catch CLIClientError.executableNotFound(let name) {
+            fail("`\(name)` CLI not found on PATH. Install it or use --provider anthropic.")
+        }
+    }
+
     // MARK: - Help
 
     static func printUsage() {
@@ -156,19 +174,25 @@ struct InfiniteBrainCLI {
         InfiniteBrain CLI — \(version())
 
         usage:
-          infb ingest <file…> --vault <path> [--api-key <key>] [--chunk-size N]
-          infb query <question…> --vault <path> [--api-key <key>] [--top-k N]
+          infb ingest <file…> --vault <path> [--provider P] [--api-key K] [--chunk-size N]
+          infb query <question…> --vault <path> [--provider P] [--api-key K] [--top-k N]
           infb seed <vault-path>
           infb reindex <vault-path>
           infb version
 
+        --provider values: anthropic (default) | claude-cli | codex-cli | cursor-cli
+          The CLI providers shell out to the locally installed `claude`,
+          `codex`, or `cursor` binary — no API key needed.
+
         env:
-          INFINITEBRAIN_VAULT   default --vault
-          ANTHROPIC_API_KEY     default --api-key
+          INFINITEBRAIN_VAULT     default --vault
+          ANTHROPIC_API_KEY       default --api-key (anthropic provider only)
+          INFINITEBRAIN_PROVIDER  default --provider
 
         examples:
-          infb ingest book.pdf  --vault ~/MyBrain
-          infb query "what did we decide about pricing?" --vault ~/MyBrain
+          infb ingest book.pdf --vault ~/MyBrain
+          infb ingest book.pdf --vault ~/MyBrain --provider claude-cli
+          infb query "what did we decide about pricing?" --vault ~/MyBrain --provider codex-cli
         """)
     }
 

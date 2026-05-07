@@ -17,11 +17,23 @@ public final class QueryViewModel: ObservableObject {
         guard let vaultURL = settings.vaultPath else {
             error = "Pick a vault folder in Settings first."; return
         }
-        guard let apiKey = (try? settings.apiKey()) ?? nil, !apiKey.isEmpty else {
-            error = "Add an Anthropic API key in Settings first."; return
-        }
         let q = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
+
+        let apiKey = (try? settings.apiKey()) ?? nil
+        let client: LLMClient
+        do {
+            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey)
+        } catch LLMClientFactory.FactoryError.missingAPIKey {
+            error = "Anthropic provider needs an API key. Add one in Settings or switch to a CLI provider."
+            return
+        } catch CLIClientError.executableNotFound(let name) {
+            error = "`\(name)` CLI not found on PATH. Install it or pick a different provider."
+            return
+        } catch {
+            self.error = error.localizedDescription
+            return
+        }
 
         isAsking = true
         defer { isAsking = false }
@@ -34,7 +46,7 @@ public final class QueryViewModel: ObservableObject {
             ? vault.skillsDir
             : (Bundle.module.url(forResource: "skills", withExtension: nil) ?? vault.skillsDir)
 
-        let runner = SkillRunner(client: AnthropicClient(apiKey: apiKey), skillsRoot: skillsRoot)
+        let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
         let store = VaultStore(vault: vault)
         let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
         try? await index.load()
