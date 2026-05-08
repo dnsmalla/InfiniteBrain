@@ -140,7 +140,7 @@ public actor Orchestrator {
                 createdAt: now,
                 updatedAt: now
             )
-            try await store.write(sourceNote)
+            try await store.write(sourceNote, in: VaultStore.folderName(forSourceTitle: sourceNote.title))
             if let embeddings, let index {
                 let preview = "\(file.lastPathComponent): \(text.prefix(400))"
                 if let v = try? await embeddings.embed(preview) {
@@ -160,6 +160,9 @@ public actor Orchestrator {
 
         let sourceId = sourceNote.id
         let label = file.lastPathComponent
+        // Compute the source folder once; threaded through every write so
+        // VaultStore doesn't have to re-resolve it per atomic note.
+        let sourceFolder = VaultStore.folderName(forSourceTitle: sourceNote.title)
 
         if isResume {
             await progress("split into \(total) chunk(s) — \(pendingIndices.count) pending, pipelining up to \(concurrency) at once")
@@ -220,10 +223,10 @@ public actor Orchestrator {
                 case .skip: local.skipped += 1
                 case .quarantine: local.quarantined += 1
                 case .improve(let updated):
-                    try? await store.write(updated)
+                    try? await store.write(updated, in: sourceFolder)
                     local.improved += 1
                 case .add(let note, let vector):
-                    try? await store.write(note)
+                    try? await store.write(note, in: sourceFolder)
                     if let index, let vector {
                         await index.record(id: note.id, vector: vector)
                     }

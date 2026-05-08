@@ -25,8 +25,13 @@ public actor VaultStore {
         self.vault = vault
     }
 
-    public func write(_ note: Note) async throws {
-        let dir = try await directory(for: note)
+    /// Writes a note's markdown file. When the caller knows the source
+    /// folder (the orchestrator does — derived from the input filename
+    /// once per ingest), passing `in:` skips the per-write vault scan that
+    /// would otherwise look up the source note to derive its folder name.
+    /// For a 200-note book this saves 200 recursive directory walks.
+    public func write(_ note: Note, in folder: String? = nil) async throws {
+        let dir = try await directory(for: note, folderOverride: folder)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(Self.fileName(for: note))
         let serialized = NoteSerializer.serialize(note)
@@ -83,10 +88,19 @@ public actor VaultStore {
         return collapsed
     }
 
-    /// Where to write the given note. Source notes own their folder name;
-    /// atomic notes inherit it from `sources[0]`. Falls back to legacy
-    /// `notes/<type>/` when no source can be resolved.
-    private func directory(for note: Note) async throws -> URL {
+    /// Where to write the given note.
+    ///   1. `folderOverride` wins. The orchestrator passes its
+    ///      pre-computed `sourceFolder` here per ingest.
+    ///   2. Source notes own their folder name (slugified title).
+    ///   3. Atomic notes look up `sources[0]` to inherit its folder
+    ///      (slow path — used only when no override is provided).
+    ///   4. Legacy `notes/<type>/` for notes with no resolvable source.
+    private func directory(for note: Note, folderOverride: String?) async throws -> URL {
+        if let override = folderOverride {
+            return vault.notesRoot
+                .appendingPathComponent(override, isDirectory: true)
+                .appendingPathComponent(note.type.rawValue, isDirectory: true)
+        }
         if note.type == .source {
             let folder = Self.slugify(note.title)
             return vault.notesRoot
@@ -100,8 +114,13 @@ public actor VaultStore {
                 .appendingPathComponent(folder, isDirectory: true)
                 .appendingPathComponent(note.type.rawValue, isDirectory: true)
         }
-        // Legacy layout for notes without a resolvable source.
         return vault.notesRoot.appendingPathComponent(note.type.rawValue, isDirectory: true)
+    }
+
+    /// Convenience accessor so callers (Orchestrator) can ask for the
+    /// canonical folder name without knowing the slugify rule.
+    public static func folderName(forSourceTitle title: String) -> String {
+        slugify(title)
     }
 
     /// Read a note by id without creating directories along the way.
