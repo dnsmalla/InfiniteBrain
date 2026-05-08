@@ -77,13 +77,14 @@ struct QueryView: View {
                         Text("Cited notes")
                             .font(.caption.smallCaps())
                             .foregroundStyle(.secondary)
-                        FlowLayout(spacing: 6) {
+                        FlowLayout(spacing: 8) {
                             ForEach(vm.citedIds, id: \.self) { id in
-                                Text(id)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .padding(.horizontal, 8).padding(.vertical, 4)
-                                    .background(.background.secondary, in: Capsule())
-                                    .textSelection(.enabled)
+                                let note = vm.citedNotes[id]
+                                TagChip(
+                                    title: note?.title ?? id,
+                                    color: NodePalette.color(for: note?.type ?? .concept),
+                                    id: id
+                                )
                             }
                         }
                     }
@@ -109,6 +110,29 @@ struct QueryView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.callout)
+    }
+}
+
+private struct TagChip: View {
+    let title: String
+    let color: Color
+    let id: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(title)
+                .font(.system(.caption, design: .rounded))
+                .fontWeight(.medium)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(color.opacity(0.12))
+        .background(.background.secondary)
+        .clipShape(Capsule())
+        .overlay(Capsule().strokeBorder(color.opacity(0.2)))
+        .help(id)
+        .textSelection(.enabled)
     }
 }
 

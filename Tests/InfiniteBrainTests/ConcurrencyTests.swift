@@ -22,8 +22,7 @@ final class ConcurrencyTests: XCTestCase {
               {"title":"u4","body":"unit four body","line_count":50,"suggested_type_hint":"note"}
             ]}
             """#,
-            "classify-node":  #"{"type":"note","confidence":0.9,"rationale":""}"#,
-            "summarize-note": #"{"summary":"s"}"#,
+            "process-unit":   #"{"type":"note","confidence":0.9,"rationale":"","summary":"s"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":""}"#,
         ]
         let client = DispatchingFakeClient(routes: routes)
@@ -37,6 +36,7 @@ final class ConcurrencyTests: XCTestCase {
                 "01JNOTE00000000000000004",
             ]),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             concurrency: 2
         )
 

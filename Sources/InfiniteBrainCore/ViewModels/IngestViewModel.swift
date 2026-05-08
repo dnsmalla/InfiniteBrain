@@ -13,6 +13,9 @@ public final class IngestViewModel: ObservableObject {
     /// Holds the currently-running ingest Task so the Stop button can
     /// cancel it. `nil` when no run is in flight.
     private var runTask: Task<Void, Never>?
+    
+    private var watcher: VaultWatcher?
+    private var syncTask: Task<Void, Never>?
 
     public init() {}
 
@@ -48,42 +51,64 @@ public final class IngestViewModel: ObservableObject {
 
     /// Delete the source note + every atomic note citing it + the matching
     /// checkpoint, for each currently-dropped file. Used by the Re-ingest
-    /// button so users can wipe an in-progress or fully-done ingest and
-    /// start fresh without manually editing the vault folder.
+    /// button so users can wipe an in-progress or fully-done ingest.
     public func wipePrevious(settings: AppSettings) async {
-        guard let vaultURL = settings.vaultPath else {
-            append("Pick a vault folder in Settings first.")
-            return
-        }
-        guard !droppedFiles.isEmpty else {
-            append("Drop files into the panel above first.")
-            return
-        }
+        guard let vaultURL = settings.vaultPath else { return }
         let vault = Vault(root: vaultURL)
         let store = VaultStore(vault: vault)
-        let cps = CheckpointStore(vault: vault)
+        
+        let orchestrator = Orchestrator(
+            skillRunner: SkillRunner(client: DummyLLMClient(), skillsRoot: vault.skillsDir),
+            checkpoints: CheckpointStore(vault: vault),
+            metadataIndex: store.metadataIndex
+        )
 
         for file in droppedFiles {
             let text: String
             do {
                 text = try InputReader.read(file).text
-            } catch {
-                append("could not read \(file.lastPathComponent): \(error.localizedDescription)")
-                continue
-            }
+            } catch { continue }
+            
             let hash = Self.sha256Hex(text)
             let all = (try? await store.allNotes()) ?? []
-            guard let prior = all.first(where: { $0.type == .source && $0.contentHash == hash }) else {
-                append("no previous ingest found for \(file.lastPathComponent)")
-                continue
+            if let prior = all.first(where: { $0.type == .source && $0.contentHash == hash }) {
+                append("↩️ wiping previous ingest for \(file.lastPathComponent)…")
+                try? await orchestrator.revertIngest(sourceId: prior.id, in: vault)
             }
-            let toDelete = all.filter { $0.id == prior.id || $0.sources.contains(prior.id) }
-            for n in toDelete { try? await store.delete(id: n.id) }
-            try? await cps.delete(fileHash: hash)
-            append("wiped \(file.lastPathComponent): removed \(toDelete.count) note(s)")
         }
-        // Tell observers the vault changed.
         lastResult = IngestResult(skipped: 0)
+    }
+
+    /// Reverts an ingestion batch given a path to a .source markdown file.
+    public func revertIngest(sourceURL: URL, settings: AppSettings) async {
+        guard let vaultURL = settings.vaultPath else { return }
+        let vault = Vault(root: vaultURL)
+        let store = VaultStore(vault: vault)
+        
+        let orchestrator = Orchestrator(
+            skillRunner: SkillRunner(client: DummyLLMClient(), skillsRoot: vault.skillsDir),
+            checkpoints: CheckpointStore(vault: vault),
+            metadataIndex: store.metadataIndex
+        )
+
+        guard let content = try? String(contentsOf: sourceURL, encoding: .utf8),
+              let note = try? NoteSerializer.parse(content) else { return }
+        
+        append("↩️ reverting ingest for \(note.title)…")
+        do {
+            try await orchestrator.revertIngest(sourceId: note.id, in: vault)
+            append("   done. removed generated notes.")
+            lastResult = IngestResult(skipped: 0)
+        } catch {
+            append("   revert error: \(error.localizedDescription)")
+        }
+    }
+    
+    // Dummy client for non-LLM operations
+    private class DummyLLMClient: LLMClient, @unchecked Sendable {
+        func complete(system: String, user: String, responseSchema: [String : Any]?) async throws -> String {
+            return ""
+        }
     }
 
     private static func sha256Hex(_ s: String) -> String {
@@ -132,6 +157,7 @@ public final class IngestViewModel: ObservableObject {
         let vault = Vault(root: vaultURL)
         do { try VaultInitializer().ensureSeeded(vault: vault) }
         catch { append("could not seed vault: \(error.localizedDescription)") }
+        let store = VaultStore(vault: vault)
         let skillsRoot = Self.skillsRoot(for: vault)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
 
@@ -139,33 +165,49 @@ public final class IngestViewModel: ObservableObject {
         let index = EmbeddingIndex(storeURL: indexURL)
         try? await index.load()
 
-        // Capture-safe progress sink: each progress line hops to the main
-        // actor and appends to `log` so the user sees forward motion during
-        // a long ingest instead of staring at a frozen panel.
-        let progressSink: ProgressHandler = { [weak self] line in
-            await MainActor.run { self?.append("   · \(line)") }
+        // Capture-safe progress sink
+        let progressSink: ProgressHandler = { line in
+            Task { @MainActor in
+                self.append("   · \(line)")
+            }
         }
         let orchestrator = Orchestrator(
             skillRunner: runner,
+            checkpoints: CheckpointStore(vault: vault),
             embeddings: NLEmbeddingProvider(),
             index: index,
+            metadataIndex: store.metadataIndex,
+            concurrency: settings.concurrency,
             onProgress: progressSink
         )
 
         var totals = IngestResult()
-        for file in droppedFiles {
-            let bytes = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0
-            let approxChunks = max(1, bytes / 16_000)
-            append("→ \(file.lastPathComponent)  (\(byteFormatter.string(fromByteCount: Int64(bytes))), ~\(approxChunks) chunk\(approxChunks == 1 ? "" : "s"))")
-            do {
-                let r = try await orchestrator.ingest(file: file, into: vault)
-                append("   added: \(r.added)  improved: \(r.improved)  skipped: \(r.skipped)")
-                totals.added += r.added
-                totals.improved += r.improved
-                totals.skipped += r.skipped
-                totals.quarantined += r.quarantined
-            } catch {
-                append("   error: \(error.localizedDescription)")
+        await withTaskGroup(of: IngestResult?.self) { group in
+            for file in droppedFiles {
+                group.addTask {
+                    let bytes = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64) ?? 0
+                    let approxChunks = max(1, Int(bytes) / 16_000)
+                    let fileName = file.lastPathComponent
+                    await self.appendFormattedIngestStart(fileName: fileName, bytes: bytes, approxChunks: approxChunks)
+                    
+                    do {
+                        let r = try await orchestrator.ingest(file: file, into: vault)
+                        await self.append("   added: \(r.added)  improved: \(r.improved)  skipped: \(r.skipped)")
+                        return r
+                    } catch {
+                        await self.append("   error: \(fileName): \(error.localizedDescription)")
+                        return nil
+                    }
+                }
+            }
+            
+            for await result in group {
+                if let r = result {
+                    totals.added += r.added
+                    totals.improved += r.improved
+                    totals.skipped += r.skipped
+                    totals.quarantined += r.quarantined
+                }
             }
         }
         lastResult = totals
@@ -184,6 +226,11 @@ public final class IngestViewModel: ObservableObject {
             log.removeFirst(log.count - Self.maxLogLines)
         }
     }
+    
+    private func appendFormattedIngestStart(fileName: String, bytes: Int64, approxChunks: Int) {
+        let sizeStr = byteFormatter.string(fromByteCount: bytes)
+        append("→ \(fileName)  (\(sizeStr), ~\(approxChunks) chunk\(approxChunks == 1 ? "" : "s"))")
+    }
 
     private let byteFormatter: ByteCountFormatter = {
         let f = ByteCountFormatter()
@@ -200,5 +247,82 @@ public final class IngestViewModel: ObservableObject {
             return bundled
         }
         return custom  // best effort
+    }
+
+    // MARK: - Reactive Sync
+    
+    public func startWatcher(settings: AppSettings) {
+        guard watcher == nil, let url = settings.vaultPath else { return }
+        
+        do {
+            watcher = try VaultWatcher(url: url) { [weak self] event in
+                Task { @MainActor in
+                    self?.handleWatcherEvent(event, settings: settings)
+                }
+            }
+            append("👁 background sync active")
+        } catch {
+            append("⚠️ could not start watcher: \(error.localizedDescription)")
+        }
+    }
+    
+    public func stopWatcher() {
+        watcher?.stop()
+        watcher = nil
+    }
+    
+    private func handleWatcherEvent(_ event: WatcherEvent, settings: AppSettings) {
+        // Debounce: wait for 2 seconds of silence before reconciling.
+        // This prevents "thrashing" if multiple files are saved at once.
+        syncTask?.cancel()
+        syncTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            await reconcileVault(settings: settings)
+        }
+    }
+    
+    private func reconcileVault(settings: AppSettings) async {
+        guard let url = settings.vaultPath else { return }
+        let vault = Vault(root: url)
+        let store = VaultStore(vault: vault)
+        
+        append("🔄 reconciling with external changes…")
+        
+        do {
+            let diskNotes = try await store.allNotes()
+            let indexEntries = await store.metadataIndex.allEntries()
+            
+            let diskIds = Set(diskNotes.map(\.id))
+            let indexIds = Set(indexEntries.map(\.id))
+            
+            // 1. Remove entries from index that don't exist on disk
+            let deleted = indexIds.subtracting(diskIds)
+            for id in deleted {
+                await store.metadataIndex.remove(noteId: id)
+            }
+            
+            // 2. Identify new or changed notes
+            // (Note: we use contentHash to detect changes without full text comparison)
+            let indexHashes = Dictionary(uniqueKeysWithValues: indexEntries.map { ($0.id, "") }) // In real app, MetadataIndex should store hash
+            
+            // For now, we Re-update all disk notes into the index. 
+            // In a larger vault, we'd only do this for files with newer mtime.
+            for note in diskNotes {
+                await store.metadataIndex.update(note)
+            }
+            
+            try await store.metadataIndex.save()
+            
+            if !deleted.isEmpty {
+                append("   removed \(deleted.count) stale note(s) from index")
+            }
+            append("   sync complete")
+            
+            // Trigger UI refresh
+            lastResult = IngestResult(skipped: 0)
+        } catch {
+            append("   sync failed: \(error.localizedDescription)")
+        }
     }
 }

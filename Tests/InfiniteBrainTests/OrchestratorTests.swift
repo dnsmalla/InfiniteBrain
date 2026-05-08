@@ -17,15 +17,15 @@ final class OrchestratorTests: XCTestCase {
 
         let fake = DispatchingFakeClient(routes: [
             "atomize-text":    #"{"units":[{"title":"No free tier","body":"We decided to drop the free tier on the Indie plan.","line_count":52,"suggested_type_hint":"decision"}]}"#,
-            "classify-node":   #"{"type":"decision","confidence":0.93,"rationale":"clear choice"}"#,
-            "summarize-note":  #"{"summary":"We will not offer a free tier on the Indie plan."}"#,
+            "process-unit":    #"{"type":"decision","confidence":0.93,"rationale":"clear choice","summary":"We will not offer a free tier on the Indie plan."}"#,
             "reconcile-note":  #"{"decision":"add","target_id":null,"rationale":"new topic"}"#,
         ])
 
         let orchestrator = Orchestrator(
             skillRunner: SkillRunner(client: fake, skillsRoot: skillsRoot),
             idGenerator: FixedIDGenerator(ids: ["01JSRC000000000000000001", "01JNOTE000000000000000002"]),
-            dateProvider: FixedDateProvider(date: Date(timeIntervalSince1970: 1_700_000_000))
+            dateProvider: FixedDateProvider(date: Date(timeIntervalSince1970: 1_700_000_000)),
+            checkpoints: CheckpointStore(vault: vault)
         )
 
         let result = try await orchestrator.ingest(file: input, into: vault)
@@ -55,15 +55,15 @@ final class OrchestratorTests: XCTestCase {
 
         let fake = DispatchingFakeClient(routes: [
             "atomize-text":   #"{"units":[{"title":"x","body":"already-known content","line_count":50,"suggested_type_hint":"note"}]}"#,
-            "classify-node":  #"{"type":"note","confidence":0.8,"rationale":""}"#,
-            "summarize-note": #"{"summary":"already-known."}"#,
+            "process-unit":   #"{"type":"note","confidence":0.8,"rationale":"","summary":"already-known."}"#,
             "reconcile-note": #"{"decision":"skip","target_id":"01JEXISTING0000000000000","rationale":"dup"}"#,
         ])
 
         let orchestrator = Orchestrator(
             skillRunner: SkillRunner(client: fake, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JNEW000000000000000099"]),
-            dateProvider: FixedDateProvider(date: Date())
+            dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault)
         )
 
         let result = try await orchestrator.ingest(file: input, into: vault)

@@ -54,6 +54,7 @@ struct InfiniteBrainCLI {
         try? await index.load()
         let orch = Orchestrator(
             skillRunner: runner,
+            checkpoints: CheckpointStore(vault: vault),
             embeddings: NLEmbeddingProvider(),
             index: index,
             chunkSize: parsed.chunkSize ?? 16_000

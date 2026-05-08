@@ -20,6 +20,7 @@ struct SettingsView: View {
                 if settings.provider == .anthropic {
                     apiKeyCard
                 }
+                concurrencyCard
                 Spacer(minLength: 32)
             }
             .padding(24)
@@ -90,6 +91,24 @@ struct SettingsView: View {
 
             providerStatus
                 .padding(.top, 4)
+        }
+    }
+
+    private var concurrencyCard: some View {
+        Card(title: "Pipeline concurrency", systemImage: "bolt.fill") {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Parallel units:").font(.callout)
+                    Text("\(settings.concurrency)").font(.headline).foregroundStyle(Color.accentColor)
+                    Spacer()
+                    Stepper("", value: $settings.concurrency, in: 1...8)
+                        .labelsHidden()
+                        .onChange(of: settings.concurrency) { _, _ in settings.saveConcurrency() }
+                }
+                Text("How many pieces of text the AI processes at once. Higher is faster but hits API rate limits sooner.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

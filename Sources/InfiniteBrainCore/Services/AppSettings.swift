@@ -9,12 +9,14 @@ public final class AppSettings: ObservableObject, @unchecked Sendable {
     private static let vaultPathKey = "vaultPath"
     private static let apiKeyKey = "anthropicAPIKey"
     private static let providerKey = "llmProvider"
+    private static let concurrencyKey = "concurrency"
 
     private let defaults: UserDefaults
     private let keychain: KeychainStore
 
     @Published public private(set) var vaultPathStorage: String?
     @Published public private(set) var providerRaw: String
+    @Published public var concurrency: Int
 
     public init(defaults: UserDefaults = .standard, keychain: KeychainStore = SystemKeychain()) {
         self.defaults = defaults
@@ -23,11 +25,23 @@ public final class AppSettings: ObservableObject, @unchecked Sendable {
         if let saved = defaults.string(forKey: Self.providerKey) {
             self.providerRaw = saved
         } else {
-            // First-run default: prefer an installed CLI over Anthropic API,
-            // so users with `claude` installed don't have to add an API key
-            // before they can do anything.
+            // First-run default: prefer an installed CLI over Anthropic API.
+            // We set providerRaw temporarily to satisfy initialization, 
+            // then compute bestAvailableProvider after keychain is set.
+            self.providerRaw = LLMProviderKind.anthropic.rawValue 
+        }
+
+        self.concurrency = defaults.integer(forKey: Self.concurrencyKey)
+        if self.concurrency < 1 { self.concurrency = 2 } // Default
+        
+        // Re-compute best provider if this was first run
+        if defaults.string(forKey: Self.providerKey) == nil {
             self.providerRaw = Self.bestAvailableProvider(keychain: keychain).rawValue
         }
+    }
+
+    public func saveConcurrency() {
+        defaults.set(concurrency, forKey: Self.concurrencyKey)
     }
 
     private static func bestAvailableProvider(keychain: KeychainStore) -> LLMProviderKind {

@@ -43,6 +43,9 @@ private struct HelpMenuButton: View {
 }
 
 struct ContentView: View {
+    @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var ingest: IngestViewModel
+    
     var body: some View {
         VStack(spacing: 0) {
             TabView {
@@ -57,8 +60,16 @@ struct ContentView: View {
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "gearshape") }
             }
-            Divider()
             StatusBar()
+        }
+        .onAppear {
+            ingest.startWatcher(settings: settings)
+        }
+        .onChange(of: settings.vaultPath) { _, newValue in
+            ingest.stopWatcher()
+            if newValue != nil {
+                ingest.startWatcher(settings: settings)
+            }
         }
     }
 }

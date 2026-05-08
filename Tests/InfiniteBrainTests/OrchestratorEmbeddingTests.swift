@@ -24,8 +24,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
         let capture = PromptCapture()
         let baseRoutes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"x","body":"free tier dropped","line_count":50,"suggested_type_hint":"decision"}]}"#,
-            "classify-node":  #"{"type":"decision","confidence":0.9,"rationale":"clear"}"#,
-            "summarize-note": #"{"summary":"dropped"}"#,
+            "process-unit":   #"{"type":"decision","confidence":0.9,"rationale":"clear","summary":"dropped"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":"new"}"#,
         ]
         let client = CapturingDispatchClient(routes: baseRoutes, capture: capture)
@@ -38,6 +37,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JFIRSTSRC0000000000000A", "01JFIRSTNOTE000000000000B"]),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             embeddings: provider,
             index: EmbeddingIndex(storeURL: indexURL)
         )
@@ -51,6 +51,7 @@ final class OrchestratorEmbeddingTests: XCTestCase {
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSECONDSRC000000000000C", "01JSECONDNOTE00000000000D"]),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             embeddings: provider,
             index: index2
         )

@@ -113,6 +113,41 @@ struct VaultBrowser: View {
                                 .truncationMode(.middle)
                         }
                         Spacer()
+                        
+                        if let url = selectedFile {
+                            if url.path.contains("/source/") {
+                                Button {
+                                    Task { await ingest.revertIngest(sourceURL: url, settings: settings) }
+                                } label: {
+                                    Label("Undo Ingest", systemImage: "arrow.uturn.backward.circle")
+                                }
+                                .help("Delete every note generated from this source")
+                                .buttonStyle(.borderedProminent)
+                                .tint(.red)
+                                .controlSize(.small)
+                            }
+
+                            Button {
+                                NSWorkspace.shared.activateFileViewerSelecting([url])
+                            } label: {
+                                Image(systemName: "folder")
+                            }
+                            .help("Reveal in Finder")
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+
+                            Button {
+                                NSWorkspace.shared.open(url)
+                            } label: {
+                                Image(systemName: "arrow.up.forward.app")
+                            }
+                            .help("Open in Default App")
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            
+                            Divider().frame(height: 12).padding(.horizontal, 4)
+                        }
+
                         Picker("", selection: $previewMode) {
                             ForEach(PreviewMode.allCases) { mode in
                                 Text(mode.rawValue).tag(mode)
@@ -157,8 +192,8 @@ struct VaultBrowser: View {
         guard let notesIdx = parts.firstIndex(of: "notes"),
               notesIdx + 2 < parts.count else { return nil }
         let folder = parts[notesIdx + 1]
-        // Skip if the immediate child of notes/ is a NodeType (legacy layout).
-        if NodeType(rawValue: folder) != nil { return nil }
+        // Skip if the immediate child of notes/ is a known NodeType (legacy layout).
+        if NodeType.allCases.contains(NodeType(rawValue: folder)) { return nil }
         return folder
             .replacingOccurrences(of: "-pdf", with: ".pdf")
             .replacingOccurrences(of: "-", with: " ")
@@ -215,14 +250,15 @@ struct VaultBrowser: View {
         }
         for dir in topLevel {
             guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
-            if let type = NodeType(rawValue: dir.lastPathComponent) {
+            let potentialType = NodeType(rawValue: dir.lastPathComponent)
+            if NodeType.allCases.contains(potentialType) {
                 // Legacy: `notes/<type>/*.md`
-                addMarkdownFiles(in: dir, to: &grouped, as: type)
+                addMarkdownFiles(in: dir, to: &grouped, as: potentialType)
             } else {
                 // Per-source: `notes/<source-slug>/<type>/*.md`
                 let typeDirs = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
                 for typeDir in typeDirs {
-                    guard let type = NodeType(rawValue: typeDir.lastPathComponent) else { continue }
+                    let type = NodeType(rawValue: typeDir.lastPathComponent)
                     addMarkdownFiles(in: typeDir, to: &grouped, as: type)
                 }
             }

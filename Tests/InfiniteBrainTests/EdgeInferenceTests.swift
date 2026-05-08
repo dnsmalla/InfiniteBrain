@@ -16,8 +16,7 @@ final class EdgeInferenceTests: XCTestCase {
 
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"x","body":"free tier dropped","line_count":50,"suggested_type_hint":"decision"}]}"#,
-            "classify-node":  #"{"type":"decision","confidence":0.9,"rationale":"clear"}"#,
-            "summarize-note": #"{"summary":"dropped"}"#,
+            "process-unit":   #"{"type":"decision","confidence":0.9,"rationale":"clear","summary":"dropped"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":"new"}"#,
             "infer-edges":    #"{"edges":[{"type":"supports","target_id":"01JFACT0000000000000000001","evidence":"price floor proves it"}]}"#,
         ]
@@ -31,6 +30,7 @@ final class EdgeInferenceTests: XCTestCase {
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSRC0000000000000000001", "01JNEW0000000000000000002"]),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             embeddings: provider,
             index: index
         )

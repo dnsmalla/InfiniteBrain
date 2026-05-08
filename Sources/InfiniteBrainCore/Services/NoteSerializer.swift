@@ -107,10 +107,12 @@ enum NoteSerializer {
             i += 1
         }
 
-        guard let id, let typeRaw, let type = NodeType(rawValue: typeRaw),
+        guard let id, let typeRaw,
               let title, let summary, let version, let contentHash,
               let createdAt, let updatedAt
         else { throw VaultStoreError.malformed("missing required frontmatter fields") }
+        
+        let type = NodeType(rawValue: typeRaw)
 
         return Note(
             id: id,

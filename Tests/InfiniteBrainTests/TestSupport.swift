@@ -57,6 +57,7 @@ actor DispatchingFakeClient: LLMClient {
         case "atomize-text":    return "convert a chunk of long-form text"
         case "classify-node":   return "Pick exactly one type"
         case "summarize-note":  return "Write a single English sentence"
+        case "process-unit":    return "Your task is two-fold"
         case "reconcile-note":  return "Compare the candidate against"
         case "improve-note":    return "Produce an improved version"
         case "infer-edges":     return "You connect a new note"

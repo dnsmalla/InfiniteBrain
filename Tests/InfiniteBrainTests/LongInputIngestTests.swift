@@ -24,8 +24,7 @@ final class LongInputIngestTests: XCTestCase {
         // Each atomize call returns one unit. With chunkSize=16_000 → ~4 calls.
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"chunk-piece","body":"chunk piece body","line_count":50,"suggested_type_hint":"note"}]}"#,
-            "classify-node":  #"{"type":"note","confidence":0.9,"rationale":""}"#,
-            "summarize-note": #"{"summary":"piece"}"#,
+            "process-unit":   #"{"type":"note","confidence":0.9,"rationale":"","summary":"piece"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":"new"}"#,
         ]
         let capture = PromptCapture()
@@ -34,6 +33,7 @@ final class LongInputIngestTests: XCTestCase {
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: ULIDGenerator(),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             chunkSize: 16_000
         )
 
@@ -55,14 +55,14 @@ final class LongInputIngestTests: XCTestCase {
 
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"x","body":"short","line_count":50,"suggested_type_hint":"note"}]}"#,
-            "classify-node":  #"{"type":"note","confidence":0.9,"rationale":""}"#,
-            "summarize-note": #"{"summary":"x"}"#,
+            "process-unit":   #"{"type":"note","confidence":0.9,"rationale":"","summary":"x"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":"new"}"#,
         ]
         let capture = PromptCapture()
         let client = CapturingDispatchClient(routes: routes, capture: capture)
         let orch = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
+            checkpoints: CheckpointStore(vault: vault),
             chunkSize: 16_000
         )
         _ = try await orch.ingest(file: f, into: vault)

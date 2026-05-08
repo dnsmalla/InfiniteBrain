@@ -35,15 +35,15 @@ final class OrphanedSourceReingestTests: XCTestCase {
         // The new ingest should NOT skip — it should re-run and produce atomic notes.
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"u","body":"stable content","line_count":50,"suggested_type_hint":"note"}]}"#,
-            "classify-node":  #"{"type":"note","confidence":0.9,"rationale":""}"#,
-            "summarize-note": #"{"summary":"x"}"#,
+            "process-unit":   #"{"type":"note","confidence":0.9,"rationale":"","summary":"x"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":""}"#,
         ]
         let client = DispatchingFakeClient(routes: routes)
         let orch = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01NEWSRC0000000000000000", "01NEWNOTE000000000000000"]),
-            dateProvider: FixedDateProvider(date: Date())
+            dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault)
         )
         let r = try await orch.ingest(file: f, into: vault)
         XCTAssertEqual(r.added, 1, "orphaned source must trigger a re-run, not a skip")

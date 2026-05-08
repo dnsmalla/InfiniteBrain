@@ -20,9 +20,41 @@ public enum VaultStoreError: Error, Equatable {
 ///   notes/<type>/<id>--<slug>.md
 public actor VaultStore {
     public let vault: Vault
+    public let metadataIndex: MetadataIndex
+    private var pathCache: [String: URL] = [:]
+    private var isCacheWarm = false
 
     public init(vault: Vault) {
         self.vault = vault
+        let storeURL = vault.sidecar.appendingPathComponent("metadata.bin")
+        self.metadataIndex = MetadataIndex(storeURL: storeURL)
+    }
+
+    /// Performs a full scan of the vault to warm the path cache.
+    /// This should be called once at startup or when the vault changes.
+    public func warmCache() async {
+        guard !isCacheWarm else { return }
+        let fm = FileManager.default
+        let root = vault.notesRoot
+        guard fm.fileExists(atPath: root.path) else {
+            isCacheWarm = true; return
+        }
+        
+        let enumerator = fm.enumerator(at: root, includingPropertiesForKeys: nil)
+        while let url = enumerator?.nextObject() as? URL {
+            guard url.pathExtension == "md" else { continue }
+            let name = url.lastPathComponent
+            if let dashIdx = name.range(of: "--") {
+                let id = String(name[..<dashIdx.lowerBound])
+                pathCache[id] = url
+            }
+        }
+        isCacheWarm = true
+    }
+
+    public func invalidateCache() {
+        pathCache.removeAll()
+        isCacheWarm = false
     }
 
     /// Writes a note's markdown file. When the caller knows the source
@@ -36,21 +68,33 @@ public actor VaultStore {
         let url = dir.appendingPathComponent(Self.fileName(for: note))
         let serialized = NoteSerializer.serialize(note)
         try serialized.write(to: url, atomically: true, encoding: .utf8)
+        pathCache[note.id] = url
+        await metadataIndex.update(note)
     }
 
     public func read(id: String) async throws -> Note {
-        guard let url = try locateFile(forId: id) else {
+        guard let url = try await locateFile(forId: id) else {
             throw VaultStoreError.notFound(id: id)
         }
         let content = try String(contentsOf: url, encoding: .utf8)
-        return try NoteSerializer.parse(content)
+        let note = try NoteSerializer.parse(content)
+        await metadataIndex.update(note)
+        return note
     }
 
     public func delete(id: String) async throws {
-        guard let url = try locateFile(forId: id) else {
+        guard let url = try await locateFile(forId: id) else {
             throw VaultStoreError.notFound(id: id)
         }
+        if let note = try? await read(id: id) {
+            await metadataIndex.remove(noteId: id)
+        }
         try FileManager.default.removeItem(at: url)
+        pathCache.removeValue(forKey: id)
+    }
+
+    public func saveMetadata() async throws {
+        try await metadataIndex.save()
     }
 
     /// Returns every note in the vault. Walks the entire `notes/` tree
@@ -67,6 +111,7 @@ public actor VaultStore {
             guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { continue }
             guard let content = try? String(contentsOf: url, encoding: .utf8),
                   let note = try? NoteSerializer.parse(content) else { continue }
+            await metadataIndex.update(note)
             out.append(note)
         }
         return out
@@ -126,22 +171,21 @@ public actor VaultStore {
     /// Read a note by id without creating directories along the way.
     /// Used internally by `directory(for:)` to avoid recursive write loops.
     private func readWithoutAutoCreate(id: String) async throws -> Note? {
-        guard let url = try locateFile(forId: id) else { return nil }
+        guard let url = try await locateFile(forId: id) else { return nil }
         let content = try String(contentsOf: url, encoding: .utf8)
         return try NoteSerializer.parse(content)
     }
 
     /// Recursive walk of `<vault>/notes/` looking for `<id>--*.md`.
     /// Handles both new (per-source) and legacy layouts.
-    private func locateFile(forId id: String) throws -> URL? {
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: vault.notesRoot.path) else { return nil }
-        let enumerator = fm.enumerator(at: vault.notesRoot, includingPropertiesForKeys: nil)
-        while let url = enumerator?.nextObject() as? URL {
-            if url.lastPathComponent.hasPrefix("\(id)--") && url.pathExtension == "md" {
-                return url
-            }
-        }
-        return nil
+    private func locateFile(forId id: String) async throws -> URL? {
+        if let cached = pathCache[id] { return cached }
+        
+        // If not in cache and cache is warm, it really doesn't exist.
+        if isCacheWarm { return nil }
+        
+        // If cache isn't warm, do a one-off walk and warm it.
+        await warmCache()
+        return pathCache[id]
     }
 }

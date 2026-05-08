@@ -26,6 +26,7 @@ enum NodePalette {
         case .contact:   return Color(red: 0.90, green: 0.75, blue: 0.40)   // gold
         case .reference: return Color(red: 0.40, green: 0.40, blue: 0.70)   // indigo
         case .custom:    return Color(red: 0.80, green: 0.30, blue: 0.55)   // magenta
+        default:         return Color.accentColor
         }
     }
 }

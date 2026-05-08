@@ -23,6 +23,7 @@ final class ResumeIntegrationTests: XCTestCase {
             skillRunner: SkillRunner(client: stub, skillsRoot: TestPaths.bundledSkills),
             idGenerator: ULIDGenerator(),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             chunkSize: 60,
             concurrency: 1
         )
@@ -49,6 +50,7 @@ final class ResumeIntegrationTests: XCTestCase {
             skillRunner: SkillRunner(client: goodStub, skillsRoot: TestPaths.bundledSkills),
             idGenerator: ULIDGenerator(),
             dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault),
             chunkSize: 60,
             concurrency: 1
         )
@@ -91,11 +93,8 @@ actor ChunkAwareFakeClient: LLMClient {
             }
             return #"{"units":[{"title":"u","body":"chunk content","line_count":50,"suggested_type_hint":"note"}]}"#
         }
-        if system.contains(DispatchingFakeClient.matchToken(forSkill: "classify-node")) {
-            return #"{"type":"note","confidence":0.9,"rationale":""}"#
-        }
-        if system.contains(DispatchingFakeClient.matchToken(forSkill: "summarize-note")) {
-            return #"{"summary":"s"}"#
+        if system.contains(DispatchingFakeClient.matchToken(forSkill: "process-unit")) {
+            return #"{"type":"note","confidence":0.9,"rationale":"","summary":"s"}"#
         }
         if system.contains(DispatchingFakeClient.matchToken(forSkill: "reconcile-note")) {
             return #"{"decision":"add","target_id":null,"rationale":""}"#

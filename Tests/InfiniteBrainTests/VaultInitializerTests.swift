@@ -10,6 +10,7 @@ final class VaultInitializerTests: XCTestCase {
         try init_.ensureSeeded(vault: vault)
 
         let fm = FileManager.default
+        XCTAssertTrue(fm.fileExists(atPath: vault.skillsDir.appendingPathComponent("process-unit/SKILL.md").path))
         XCTAssertTrue(fm.fileExists(atPath: vault.skillsDir.appendingPathComponent("classify-node/SKILL.md").path))
         XCTAssertTrue(fm.fileExists(atPath: vault.rulesDir.appendingPathComponent("output-format.mdc").path))
         XCTAssertTrue(fm.fileExists(atPath: vault.inbox.path))

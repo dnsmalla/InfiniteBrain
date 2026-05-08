@@ -40,11 +40,13 @@ enum UnitOutcome: Sendable {
 public typealias ProgressHandler = @Sendable (String) async -> Void
 
 public actor Orchestrator {
+    public let checkpoints: CheckpointStore
     public let skillRunner: SkillRunner
     public let idGenerator: IDGenerator
     public let dateProvider: DateProvider
     public let embeddings: EmbeddingProvider?
     public let index: EmbeddingIndex?
+    public let metadataIndex: MetadataIndex?
     public let candidateK: Int
     public let confidenceThreshold: Float
     public let chunkSize: Int
@@ -55,8 +57,10 @@ public actor Orchestrator {
         skillRunner: SkillRunner,
         idGenerator: IDGenerator = ULIDGenerator(),
         dateProvider: DateProvider = SystemDateProvider(),
+        checkpoints: CheckpointStore,
         embeddings: EmbeddingProvider? = nil,
         index: EmbeddingIndex? = nil,
+        metadataIndex: MetadataIndex? = nil,
         candidateK: Int = 5,
         confidenceThreshold: Float = 0.7,
         chunkSize: Int = 16_000,
@@ -66,13 +70,37 @@ public actor Orchestrator {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
         self.dateProvider = dateProvider
+        self.checkpoints = checkpoints
         self.embeddings = embeddings
         self.index = index
+        self.metadataIndex = metadataIndex
         self.candidateK = candidateK
         self.confidenceThreshold = confidenceThreshold
         self.chunkSize = chunkSize
         self.concurrency = max(1, concurrency)
         self.onProgress = onProgress
+    }
+
+    /// Reverts an entire ingestion batch, deleting all generated atomic notes.
+    public func revertIngest(sourceId: String, in vault: Vault) async throws {
+        guard let metadataIndex = metadataIndex else { return }
+        let store = VaultStore(vault: vault)
+        
+        let all = await metadataIndex.allEntries()
+        let noteIds = all.filter { $0.sources.contains(sourceId) }.map { $0.id }
+        
+        for id in noteIds {
+            // Read note first to know where it points (to update indices)
+            if let note = try? await store.read(id: id) {
+                await metadataIndex.remove(noteId: id)
+                if let index = index { await index.remove(id: id) }
+            }
+            try? await store.delete(id: id)
+        }
+        
+        // Final flush
+        if let index = index { try? await index.flush() }
+        try? await metadataIndex.save()
     }
 
     private func progress(_ line: String) async {
@@ -147,6 +175,7 @@ public actor Orchestrator {
                     await index.record(id: sourceNote.id, vector: v)
                 }
             }
+            await metadataIndex?.update(sourceNote)
             // Initial empty checkpoint so we can mark chunks as they complete.
             try? await checkpoints.save(Checkpoint(
                 fileHash: fileHash,
@@ -170,98 +199,118 @@ public actor Orchestrator {
             await progress("split into \(total) chunk(s) — pipelining up to \(concurrency) at once")
         }
 
-        // Per-chunk pipeline: atomize → for each unit: decide → write →
-        // mark chunk done in the checkpoint.
-        @Sendable func processChunk(_ i: Int) async -> IngestResult {
-            // Cancellation check before doing any LLM work.
-            if Task.isCancelled { return IngestResult() }
-
-            // Atomize with one retry.
-            var atomized: [[String: Any]] = []
-            for attempt in 0..<2 {
-                if Task.isCancelled { return IngestResult() }
-                do {
-                    let r = try await skillRunner.run("atomize-text", input: [
-                        "text": chunks[i], "source_id": sourceId,
-                        "chunk_index": i, "chunk_total": total,
-                    ])
-                    atomized = (r["units"] as? [[String: Any]]) ?? []
-                    await progress("chunk \(i + 1)/\(total): atomized → \(atomized.count) unit(s)")
-                    break
-                } catch is CancellationError {
-                    return IngestResult()
-                } catch {
-                    if attempt == 0 {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        await progress("chunk \(i + 1)/\(total): retrying after \(Self.brief(error))")
-                        continue
-                    }
-                    await progress("chunk \(i + 1)/\(total): atomize failed (\(Self.brief(error))), skipping")
-                    return IngestResult()
-                }
-            }
-
-            // Decide + write each unit. Serial within a chunk.
-            var local = IngestResult()
-            for (j, unit) in atomized.enumerated() {
-                if Task.isCancelled { return local }
-                let reservedId = idGenerator.next()
-                let outcome: UnitOutcome
-                do {
-                    outcome = try await decideOne(
-                        unit: unit, reservedId: reservedId,
-                        sourceId: sourceId, sourceLabel: label, store: store
-                    )
-                } catch is CancellationError {
-                    return local
-                } catch {
-                    await progress("chunk \(i + 1)/\(total) unit \(j + 1)/\(atomized.count): \(Self.brief(error))")
-                    local.quarantined += 1
-                    continue
-                }
-                switch outcome {
-                case .skip: local.skipped += 1
-                case .quarantine: local.quarantined += 1
-                case .improve(let updated):
-                    try? await store.write(updated, in: sourceFolder)
-                    local.improved += 1
-                case .add(let note, let vector):
-                    try? await store.write(note, in: sourceFolder)
-                    if let index, let vector {
-                        await index.record(id: note.id, vector: vector)
-                    }
-                    local.added += 1
-                }
-            }
-            // Persist the embedding index after every chunk so a later
-            // Stop / crash / quit doesn't lose the vectors we already
-            // computed. End-of-ingest flush alone left the index out of
-            // sync with the vault on partial runs.
-            if let index { try? await index.flush() }
-
-            // Mark this chunk as complete in the checkpoint so a future
-            // re-run won't redo it.
-            _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
-            await progress("chunk \(i + 1)/\(total) done: +\(local.added) added, \(local.improved) improved, \(local.skipped) skipped")
-            return local
+        // Unified task-based pipeline:
+        // We use a TaskGroup to manage all concurrent LLM calls (atomizing AND processing).
+        // This ensures unit-level parallelism across all chunks.
+        enum WorkResult {
+            case chunkAtomized(index: Int, units: [[String: Any]])
+            case unitProcessed(chunkIndex: Int, result: IngestResult)
+            case error(String)
         }
 
         var result = IngestResult()
-        await withTaskGroup(of: IngestResult.self) { group in
-            var queue = pendingIndices.makeIterator()
-            // Prime up to `concurrency` tasks.
-            for _ in 0..<concurrency {
-                if let i = queue.next() {
-                    group.addTask { await processChunk(i) }
+        var pendingUnitsPerChunk: [Int: Int] = [:]
+        var chunkResults: [Int: IngestResult] = [:]
+        
+        try await withThrowingTaskGroup(of: WorkResult.self) { group in
+            var chunkIterator = pendingIndices.makeIterator()
+            var activeLLMCalls = 0
+            
+            // Local helper to launch next chunk if we have capacity
+            func launchNextChunk() {
+                guard activeLLMCalls < concurrency, let i = chunkIterator.next() else { return }
+                activeLLMCalls += 1
+                group.addTask {
+                    do {
+                        let r = try await self.skillRunner.run("atomize-text", input: [
+                            "text": chunks[i], "source_id": sourceId,
+                            "chunk_index": i, "chunk_total": total,
+                        ])
+                        let atomized = (r["units"] as? [[String: Any]]) ?? []
+                        return .chunkAtomized(index: i, units: atomized)
+                    } catch {
+                        return .error("chunk \(i + 1) atomize failed: \(Self.brief(error))")
+                    }
                 }
             }
-            while let r = await group.next() {
-                result.added += r.added
-                result.improved += r.improved
-                result.skipped += r.skipped
-                result.quarantined += r.quarantined
-                if let i = queue.next(), !Task.isCancelled {
-                    group.addTask { await processChunk(i) }
+
+            // Start initial chunks
+            for _ in 0..<concurrency { launchNextChunk() }
+            
+            while let work = try await group.next() {
+                switch work {
+                case .chunkAtomized(let i, let units):
+                    activeLLMCalls -= 1
+                    if units.isEmpty {
+                        _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
+                        await progress("chunk \(i + 1)/\(total) done (empty)")
+                        launchNextChunk()
+                    } else {
+                        pendingUnitsPerChunk[i] = units.count
+                        chunkResults[i] = IngestResult()
+                        await progress("chunk \(i + 1)/\(total): atomized → \(units.count) unit(s)")
+                        // Launch units up to capacity
+                        for unit in units {
+                            let reservedId = idGenerator.next()
+                            group.addTask { [self] in
+                                activeLLMCalls += 1
+                                defer { activeLLMCalls -= 1 }
+                                do {
+                                    let outcome = try await self.decideOne(
+                                        unit: unit, reservedId: reservedId,
+                                        sourceId: sourceId, sourceLabel: label, store: store
+                                    )
+                                    var local = IngestResult()
+                                    switch outcome {
+                                    case .skip: local.skipped += 1
+                                    case .quarantine: local.quarantined += 1
+                                    case .improve(let updated):
+                                        try? await store.write(updated, in: sourceFolder)
+                                        local.improved += 1
+                                    case .add(let note, let vector):
+                                        try? await store.write(note, in: sourceFolder)
+                                        if let index = self.index, let vector = vector { await index.record(id: note.id, vector: vector) }
+                                        local.added += 1
+                                    }
+                                    return .unitProcessed(chunkIndex: i, result: local)
+                                } catch {
+                                    var local = IngestResult()
+                                    local.quarantined += 1
+                                    return .unitProcessed(chunkIndex: i, result: local)
+                                }
+                            }
+                        }
+                        // While units are running, we might still have room for next chunk
+                        launchNextChunk()
+                    }
+
+                case .unitProcessed(let i, let r):
+                    result.added += r.added
+                    result.improved += r.improved
+                    result.skipped += r.skipped
+                    result.quarantined += r.quarantined
+                    
+                    if var current = chunkResults[i] {
+                        current.added += r.added
+                        current.improved += r.improved
+                        current.skipped += r.skipped
+                        current.quarantined += r.quarantined
+                        chunkResults[i] = current
+                    }
+                    
+                    pendingUnitsPerChunk[i, default: 0] -= 1
+                    if pendingUnitsPerChunk[i] == 0 {
+                        let final = chunkResults[i] ?? IngestResult()
+                        _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
+                        await progress("chunk \(i + 1)/\(total) done: +\(final.added) added, \(final.improved) improved")
+                        if let index { try? await index.flush() }
+                    }
+                    launchNextChunk()
+
+                case .error(let msg):
+                    activeLLMCalls -= 1
+                    await progress(msg)
+                    launchNextChunk()
                 }
             }
         }
@@ -270,6 +319,7 @@ public actor Orchestrator {
             do { try await index.flush() }
             catch { /* index is rebuildable from the markdown */ }
         }
+        try? await metadataIndex?.save()
 
         // Keep the checkpoint either way:
         //   - Fully complete (all chunks marked) → re-ingest sees isComplete
@@ -304,20 +354,15 @@ public actor Orchestrator {
         let title = (unit["title"] as? String) ?? "Untitled"
         let body  = (unit["body"]  as? String) ?? ""
 
-        let classified = try await skillRunner.run(
-            "classify-node",
+        let processed = try await skillRunner.run(
+            "process-unit",
             input: ["unit_title": title, "unit_body": body]
         )
-        let typeRaw = (classified["type"] as? String) ?? "note"
-        let confidence = Self.numberValue(classified["confidence"])
+        let typeRaw = (processed["type"] as? String) ?? "note"
+        let confidence = Self.numberValue(processed["confidence"])
         let lowConfidence = confidence < confidenceThreshold
-        let type = lowConfidence ? .custom : (NodeType(rawValue: typeRaw) ?? .note)
-
-        let summarized = try await skillRunner.run(
-            "summarize-note",
-            input: ["title": title, "body": body]
-        )
-        let summary = (summarized["summary"] as? String) ?? ""
+        let type = lowConfidence ? .custom : NodeType(rawValue: typeRaw)
+        let summary = (processed["summary"] as? String) ?? ""
 
         var unitVector: [Float]? = nil
         var nearest: [[String: Any]] = []
@@ -390,6 +435,7 @@ public actor Orchestrator {
                 updatedAt: writeNow,
                 needsReview: lowConfidence
             )
+            await metadataIndex?.update(note)
             if !nearest.isEmpty {
                 let inferred = (try? await skillRunner.run(
                     "infer-edges",

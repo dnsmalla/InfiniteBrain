@@ -15,8 +15,7 @@ final class DuplicateIngestTests: XCTestCase {
 
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"u","body":"stable content used twice","line_count":50,"suggested_type_hint":"note"}]}"#,
-            "classify-node":  #"{"type":"note","confidence":0.9,"rationale":""}"#,
-            "summarize-note": #"{"summary":"x"}"#,
+            "process-unit":   #"{"type":"note","confidence":0.9,"rationale":"","summary":"x"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":""}"#,
         ]
         let client = DispatchingFakeClient(routes: routes)
@@ -24,7 +23,8 @@ final class DuplicateIngestTests: XCTestCase {
             Orchestrator(
                 skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
                 idGenerator: FixedIDGenerator(ids: ids),
-                dateProvider: FixedDateProvider(date: Date())
+                dateProvider: FixedDateProvider(date: Date()),
+                checkpoints: CheckpointStore(vault: vault)
             )
         }
 

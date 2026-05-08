@@ -18,15 +18,15 @@ final class SourceNoteTests: XCTestCase {
 
         let routes: [String: String] = [
             "atomize-text":   #"{"units":[{"title":"x","body":"decided to drop","line_count":50,"suggested_type_hint":"decision"}]}"#,
-            "classify-node":  #"{"type":"decision","confidence":0.9,"rationale":"clear"}"#,
-            "summarize-note": #"{"summary":"dropped"}"#,
+            "process-unit":   #"{"type":"decision","confidence":0.9,"rationale":"clear","summary":"dropped"}"#,
             "reconcile-note": #"{"decision":"add","target_id":null,"rationale":"new"}"#,
         ]
         let client = DispatchingFakeClient(routes: routes)
         let orch = Orchestrator(
             skillRunner: SkillRunner(client: client, skillsRoot: TestPaths.bundledSkills),
             idGenerator: FixedIDGenerator(ids: ["01JSRC000000000000000000A", "01JNOT000000000000000000B"]),
-            dateProvider: FixedDateProvider(date: Date())
+            dateProvider: FixedDateProvider(date: Date()),
+            checkpoints: CheckpointStore(vault: vault)
         )
         _ = try await orch.ingest(file: f, into: vault)
 

@@ -3,12 +3,12 @@ import Foundation
 import CoreGraphics
 #endif
 
-public struct GraphNode: Equatable, Sendable {
+public struct GraphNode: Equatable, Sendable, Identifiable {
     public let id: String
     public let title: String
     public let type: NodeType
     public let summary: String
-    public let position: CGPoint
+    public var position: CGPoint
     public init(id: String, title: String, type: NodeType, summary: String, position: CGPoint) {
         self.id = id; self.title = title; self.type = type; self.summary = summary; self.position = position
     }
@@ -44,17 +44,15 @@ public enum GraphLayout {
         let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
         let maxRadius = min(canvasSize.width, canvasSize.height) / 2 * 0.85
 
-        let allTypes = NodeType.allCases
-        let typeIndex: [NodeType: Int] = Dictionary(uniqueKeysWithValues: allTypes.enumerated().map { ($1, $0) })
+        let activeTypes = Array(Set(notes.map(\.type))).sorted { $0.rawValue < $1.rawValue }
         let grouped = Dictionary(grouping: notes) { $0.type }
+        let sliceAngle = 2 * .pi / Double(max(1, activeTypes.count))
 
         var graphNodes: [GraphNode] = []
         graphNodes.reserveCapacity(notes.count)
 
-        for type in allTypes {
+        for (typeIdx, type) in activeTypes.enumerated() {
             guard let group = grouped[type], !group.isEmpty else { continue }
-            let typeIdx = typeIndex[type]!
-            let sliceAngle = 2 * .pi / Double(allTypes.count)
             // Sector spans [centerAngle - sliceAngle/2, centerAngle + sliceAngle/2].
             // Subtract π/2 so type 0 starts at the top of the canvas.
             let centerAngle = sliceAngle * Double(typeIdx) - .pi / 2

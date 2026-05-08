@@ -21,6 +21,7 @@ public extension NodeType {
         case .contact:   return "Information about a person or organisation."
         case .reference: return "A citation or supporting document used as background."
         case .custom:    return "Anything that genuinely doesn't fit one of the other 15. Flagged for review."
+        default:         return "A custom knowledge entity discovered by the AI: \(rawValue)"
         }
     }
 
@@ -43,6 +44,7 @@ public extension NodeType {
         case .contact:   return "Jane Smith, head of growth at AcmeCo"
         case .reference: return "ITU-T G.1010 standard"
         case .custom:    return "Used when the classifier's confidence is below 0.7"
+        default:         return "Specific domain entity categorized as '\(rawValue)'"
         }
     }
 }

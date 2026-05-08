@@ -7,6 +7,7 @@ public final class QueryViewModel: ObservableObject {
     @Published public var question: String = ""
     @Published public var answer: String = ""
     @Published public var citedIds: [String] = []
+    @Published public var citedNotes: [String: Note] = [:]
     @Published public var isAsking: Bool = false
     @Published public var error: String?
 
@@ -61,6 +62,15 @@ public final class QueryViewModel: ObservableObject {
             let result = try await service.ask(q)
             answer = result.text
             citedIds = result.citedIds
+            
+            // Resolve citation details for the UI
+            var notes: [String: Note] = [:]
+            for id in result.citedIds {
+                if let note = try? await store.read(id: id) {
+                    notes[id] = note
+                }
+            }
+            citedNotes = notes
         } catch {
             self.error = error.localizedDescription
         }
