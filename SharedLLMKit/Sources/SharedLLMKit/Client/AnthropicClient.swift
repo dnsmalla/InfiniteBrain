@@ -15,12 +15,14 @@ public struct AnthropicClient: LLMClient {
         }
     }
 
+    public let retryPolicy: RetryPolicy
+    public let gate: LLMGate
+    
     public let apiKey: String
     public let model: String
     public let maxTokens: Int
     public let endpoint: URL
     public let session: URLSession
-    public let retryPolicy: RetryPolicy
 
     public init(
         apiKey: String,
@@ -28,7 +30,8 @@ public struct AnthropicClient: LLMClient {
         maxTokens: Int = 8192,
         endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!,
         session: URLSession = .shared,
-        retryPolicy: RetryPolicy = .init()
+        retryPolicy: RetryPolicy = .init(),
+        gate: LLMGate = NoOpGate()
     ) {
         self.apiKey = apiKey
         self.model = model
@@ -36,12 +39,25 @@ public struct AnthropicClient: LLMClient {
         self.endpoint = endpoint
         self.session = session
         self.retryPolicy = retryPolicy
+        self.gate = gate
     }
 
     public func complete(
         system: String,
         user: String,
-        responseSchema: [String: Any]?
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
+        try await gate.withSlot {
+            try await performComplete(system: system, user: user, responseSchema: responseSchema, onUsage: onUsage)
+        }
+    }
+
+    private func performComplete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
     ) async throws -> String {
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
@@ -68,7 +84,11 @@ public struct AnthropicClient: LLMClient {
             lastBody = String(data: data, encoding: .utf8) ?? ""
 
             if (200..<300).contains(http.statusCode) {
-                return try Self.extractText(from: data)
+                let text = try Self.extractText(from: data)
+                if let usage = try? Self.extractUsage(from: data) {
+                    onUsage?(usage)
+                }
+                return text
             }
 
             // Retry only on 429 and 5xx. Other 4xx are user/auth errors and
@@ -85,6 +105,17 @@ public struct AnthropicClient: LLMClient {
         }
 
         throw AnthropicClientError.httpStatus(lastStatus, body: lastBody)
+    }
+
+    private static func extractUsage(from data: Data) throws -> LLMUsage {
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let usage = obj["usage"] as? [String: Any],
+              let input = usage["input_tokens"] as? Int,
+              let output = usage["output_tokens"] as? Int
+        else {
+            throw AnthropicClientError.malformedResponse("no usage info")
+        }
+        return LLMUsage(inputTokens: input, outputTokens: output)
     }
 
     private static func extractText(from data: Data) throws -> String {

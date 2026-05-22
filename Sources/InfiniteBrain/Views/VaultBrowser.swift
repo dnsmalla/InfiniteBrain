@@ -30,13 +30,22 @@ struct VaultBrowser: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                TextField("Filter…", text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 200)
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search notes…", text: $query)
+                        .textFieldStyle(.plain)
+                        .frame(width: 180)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
+                .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
             }
             ToolbarItem {
                 Button("Refresh", systemImage: "arrow.clockwise", action: refresh)
+                    .labelStyle(.iconOnly)
             }
         }
         .onAppear(perform: refresh)
@@ -61,14 +70,9 @@ struct VaultBrowser: View {
                                     .tag(url as URL?)
                             }
                         } header: {
-                            HStack {
-                                Text(group.type.rawValue.capitalized)
-                                    .font(.caption.smallCaps())
-                                Spacer()
-                                Text("\(group.files.count)")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text(group.type.rawValue.capitalized)
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -159,10 +163,10 @@ struct VaultBrowser: View {
                     }
                     .font(.caption)
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial)
-                    Divider()
+                    .background(.ultraThinMaterial)
+                    .overlay(Divider(), alignment: .bottom)
 
                     switch previewMode {
                     case .rendered:

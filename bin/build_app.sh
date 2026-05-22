@@ -44,6 +44,11 @@ if [[ -d "${RELEASE_DIR}/${RESOURCE_BUNDLE}" ]]; then
     cp -R "${RELEASE_DIR}/${RESOURCE_BUNDLE}" "${APP}/Contents/Resources/"
 fi
 
+# Copy App Icon
+if [[ -f "Sources/InfiniteBrain/Resources/AppIcon.icns" ]]; then
+    cp "Sources/InfiniteBrain/Resources/AppIcon.icns" "${APP}/Contents/Resources/AppIcon.icns"
+fi
+
 cat > "${APP}/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -58,6 +63,7 @@ cat > "${APP}/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key>                  <string>APPL</string>
     <key>CFBundleShortVersionString</key>           <string>${VERSION}</string>
     <key>CFBundleVersion</key>                      <string>${VERSION}</string>
+    <key>CFBundleIconFile</key>                     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>               <string>14.0</string>
     <key>NSHighResolutionCapable</key>              <true/>
     <key>NSHumanReadableCopyright</key>             <string>Copyright © 2026 Dinesh Malla. MIT.</string>

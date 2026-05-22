@@ -34,11 +34,11 @@ public enum LLMClientFactory {
         case missingAPIKey
     }
 
-    public static func make(provider: LLMProviderKind, apiKey: String?) throws -> LLMClient {
+    public static func make(provider: LLMProviderKind, apiKey: String?, gate: LLMGate = NoOpGate()) throws -> LLMClient {
         switch provider {
         case .anthropic:
             guard let apiKey, !apiKey.isEmpty else { throw FactoryError.missingAPIKey }
-            return AnthropicClient(apiKey: apiKey)
+            return AnthropicClient(apiKey: apiKey, gate: gate)
         case .claudeCLI: return try ClaudeCLIClient()
         case .codexCLI:  return try CodexCLIClient()
         case .cursorCLI: return try CursorCLIClient()

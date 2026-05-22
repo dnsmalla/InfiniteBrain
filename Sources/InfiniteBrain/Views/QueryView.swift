@@ -7,106 +7,135 @@ struct QueryView: View {
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 24) {
             header
             askBar
+            
             if let e = vm.error {
                 Label(e, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                    .font(.callout)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.red, in: RoundedRectangle(cornerRadius: 12))
             }
+            
             answerCard
         }
-        .padding(20)
+        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear { fieldFocused = true }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Ask the brain").font(.title.bold())
-            Text("Two-pass retrieval: a cheap selector picks which notes' bodies to load, then a generator answers with citations.")
-                .font(.callout)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Knowledge Retrieval")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+            Text("Multimodal RAG with semantic cross-referencing.")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private var askBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Ask a question…", text: $vm.question, axis: .vertical)
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(AppPalette.brand)
+                .font(.title3)
+            
+            TextField("Ask the brain anything about your vault...", text: $vm.question, axis: .vertical)
                 .textFieldStyle(.plain)
-                .lineLimit(1...4)
+                .lineLimit(1...5)
                 .focused($fieldFocused)
                 .onSubmit { Task { await vm.ask(settings: settings) } }
+            
             Button {
                 Task { await vm.ask(settings: settings) }
             } label: {
                 if vm.isAsking {
                     ProgressView().controlSize(.small)
                 } else {
-                    Label("Ask", systemImage: "arrow.up.circle.fill")
-                        .labelStyle(.iconOnly)
-                        .font(.title2)
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(AppPalette.brand)
                 }
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.return, modifiers: [.command])
             .disabled(vm.isAsking || vm.question.trimmingCharacters(in: .whitespaces).isEmpty)
         }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
     }
 
     private var answerCard: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 20) {
                 if vm.answer.isEmpty && !vm.isAsking && vm.error == nil {
                     placeholder
                 } else if !vm.answer.isEmpty {
                     Text(.init(vm.answer))
-                        .font(.body)
+                        .font(.system(.body, design: .serif))
+                        .lineSpacing(6)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
+                    
                     if !vm.citedIds.isEmpty {
-                        Divider()
-                        Text("Cited notes")
-                            .font(.caption.smallCaps())
-                            .foregroundStyle(.secondary)
-                        FlowLayout(spacing: 8) {
-                            ForEach(vm.citedIds, id: \.self) { id in
-                                let note = vm.citedNotes[id]
-                                TagChip(
-                                    title: note?.title ?? id,
-                                    color: NodePalette.color(for: note?.type ?? .concept),
-                                    id: id
-                                )
+                        VStack(alignment: .leading, spacing: 12) {
+                            Divider()
+                            Text("Cited Sources")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                            
+                            FlowLayout(spacing: 8) {
+                                ForEach(vm.citedIds, id: \.self) { id in
+                                    let note = vm.citedNotes[id]
+                                    TagChip(
+                                        title: note?.title ?? id,
+                                        color: NodePalette.color(for: note?.type ?? .concept),
+                                        id: id
+                                    )
+                                }
                             }
                         }
+                        .padding(.top, 10)
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
+            .padding(24)
         }
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator.opacity(0.5)))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
     }
 
     private var placeholder: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Examples", systemImage: "lightbulb")
-                .font(.callout.smallCaps())
-                .foregroundStyle(.secondary)
-            Text("• What did we decide about pricing for the Indie plan?")
-                .foregroundStyle(.secondary)
-            Text("• What facts contradict the original hypothesis about churn?")
-                .foregroundStyle(.secondary)
-            Text("• List every open question tagged with the launch pillar.")
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Recommended Queries", systemImage: "lightbulb.fill")
+                .font(.system(.subheadline, design: .rounded).bold())
+                .foregroundStyle(AppPalette.brand)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                ExampleRow(text: "What are the core concepts of the AtCoder book?")
+                ExampleRow(text: "Explain the difference between Dijkstra and Bellman-Ford.")
+                ExampleRow(text: "Summarize the greedy algorithms chapter.")
+            }
+        }
+    }
+}
+
+private struct ExampleRow: View {
+    let text: String
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.tertiary)
+            Text(text)
                 .foregroundStyle(.secondary)
         }
         .font(.callout)
@@ -123,57 +152,13 @@ private struct TagChip: View {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(title)
                 .font(.system(.caption, design: .rounded))
-                .fontWeight(.medium)
+                .fontWeight(.bold)
                 .lineLimit(1)
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(color.opacity(0.12))
-        .background(.background.secondary)
+        .background(color.opacity(0.1))
         .clipShape(Capsule())
         .overlay(Capsule().strokeBorder(color.opacity(0.2)))
         .help(id)
-        .textSelection(.enabled)
-    }
-}
-
-/// Tiny flow layout for the citation chips so they wrap naturally.
-private struct FlowLayout: Layout {
-    let spacing: CGFloat
-    init(spacing: CGFloat = 6) { self.spacing = spacing }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        var (rowW, rowH, totalH): (CGFloat, CGFloat, CGFloat) = (0, 0, 0)
-        var maxW: CGFloat = 0
-        for s in subviews {
-            let size = s.sizeThatFits(.unspecified)
-            if rowW + size.width > width {
-                totalH += rowH + spacing
-                maxW = max(maxW, rowW)
-                rowW = 0; rowH = 0
-            }
-            rowW += size.width + spacing
-            rowH = max(rowH, size.height)
-        }
-        totalH += rowH
-        maxW = max(maxW, rowW)
-        return CGSize(width: min(width, maxW), height: totalH)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        var rowH: CGFloat = 0
-        for s in subviews {
-            let size = s.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX {
-                x = bounds.minX
-                y += rowH + spacing
-                rowH = 0
-            }
-            s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
-            rowH = max(rowH, size.height)
-        }
     }
 }

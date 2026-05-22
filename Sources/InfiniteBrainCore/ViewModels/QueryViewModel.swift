@@ -24,7 +24,7 @@ public final class QueryViewModel: ObservableObject {
         let apiKey = (try? settings.apiKey()) ?? nil
         let client: LLMClient
         do {
-            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey)
+            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey, gate: GlobalRateGate.shared)
         } catch LLMClientFactory.FactoryError.missingAPIKey {
             error = "Anthropic provider needs an API key. Add one in Settings or switch to a CLI provider."
             return
@@ -49,14 +49,26 @@ public final class QueryViewModel: ObservableObject {
 
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
         let store = VaultStore(vault: vault)
-        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
+        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.bin"))
         try? await index.load()
 
         let service = QueryService(
             skillRunner: runner,
             store: store,
             embeddings: NLEmbeddingProvider(),
-            index: index
+            index: index,
+            onUsage: { usage in
+                Task {
+                    await UsageTracker.shared.record(metric: UsageMetric(
+                        timestamp: Date(),
+                        skillName: "query",
+                        provider: settings.provider.displayName,
+                        inputTokens: usage.inputTokens,
+                        outputTokens: usage.outputTokens,
+                        latencySeconds: 0
+                    ))
+                }
+            }
         )
         do {
             let result = try await service.ask(q)

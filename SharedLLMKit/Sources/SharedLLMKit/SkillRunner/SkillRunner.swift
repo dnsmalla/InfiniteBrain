@@ -19,7 +19,11 @@ public actor SkillRunner {
         self.skillsRoot = skillsRoot
     }
 
-    public func run(_ skillName: String, input: [String: Any]) async throws -> [String: Any] {
+    public func run(
+        _ skillName: String, 
+        input: [String: Any],
+        onUsage: (@Sendable (LLMUsage) -> Void)? = nil
+    ) async throws -> [String: Any] {
         let skill = try loadSkill(skillName)
         let system = buildSystemPrompt(skill: skill)
         let rawUser = buildUserPrompt(input: input)
@@ -37,7 +41,7 @@ public actor SkillRunner {
                 retryHint = "previous output failed validation: \(lastError). Return JSON only, matching the declared output schema exactly."
             }
             let user = attempt == 0 ? userBase : userBase + "\n\nNOTE: \(retryHint)"
-            let raw = try await client.complete(system: system, user: user, responseSchema: nil)
+            let raw = try await client.complete(system: system, user: user, responseSchema: nil, onUsage: onUsage)
             do {
                 let parsed = try Self.extractJSON(raw)
                 if let outputs = skill.manifest.outputs {

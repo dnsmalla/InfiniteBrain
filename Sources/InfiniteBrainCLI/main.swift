@@ -57,7 +57,8 @@ struct InfiniteBrainCLI {
             checkpoints: CheckpointStore(vault: vault),
             embeddings: NLEmbeddingProvider(),
             index: index,
-            chunkSize: parsed.chunkSize ?? 16_000
+            chunkSize: parsed.chunkSize ?? 16_000,
+            onProgress: { line in print("   · \(line)") }
         )
 
         var totals = IngestResult()

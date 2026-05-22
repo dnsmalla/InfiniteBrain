@@ -10,6 +10,7 @@ public actor EmbeddingIndex {
 
     public let storeURL: URL
     private var vectors: [String: [Float]] = [:]
+    private var magnitudes: [String: Float] = [:]
     private var dirty: Bool = false
 
     public init(storeURL: URL) {
@@ -18,11 +19,15 @@ public actor EmbeddingIndex {
 
     public func record(id: String, vector: [Float]) {
         vectors[id] = vector
+        magnitudes[id] = Self.calculateMagnitude(vector)
         dirty = true
     }
 
     public func remove(id: String) {
-        if vectors.removeValue(forKey: id) != nil { dirty = true }
+        if vectors.removeValue(forKey: id) != nil {
+            magnitudes.removeValue(forKey: id)
+            dirty = true
+        }
     }
 
     public func nearest(to query: [Float], k: Int) -> [Hit] {
@@ -35,17 +40,12 @@ public actor EmbeddingIndex {
         guard qMag > 0 else { return [] }
         
         // Brute-force dot product with Accelerate
-        let scored = vectors.map { id, v -> Hit in
-            guard v.count == query.count else { return Hit(id: id, score: -1.0) }
+        let scored = vectors.compactMap { id, v -> Hit? in
+            guard v.count == query.count else { return nil }
             var dot: Float = 0
             vDSP_dotpr(v, 1, query, 1, &dot, count)
             
-            // Note: In production we should pre-calculate and store magnitudes 
-            // of vectors in the index to avoid vDSP_svesq on every search.
-            var vMagSq: Float = 0
-            vDSP_svesq(v, 1, &vMagSq, count)
-            let vMag = sqrt(vMagSq)
-            guard vMag > 0 else { return Hit(id: id, score: -1.0) }
+            guard let vMag = magnitudes[id], vMag > 0 else { return nil }
             
             return Hit(id: id, score: dot / (qMag * vMag))
         }
@@ -55,48 +55,75 @@ public actor EmbeddingIndex {
     public func load() throws {
         guard FileManager.default.fileExists(atPath: storeURL.path) else { return }
         
-        // Attempt binary load; fallback to JSON for migration
-        do {
-            let data = try Data(contentsOf: storeURL)
-            if data.count > 4 {
-                var offset = 0
-                func read<T>(_ type: T.Type) -> T? {
-                    let size = MemoryLayout<T>.size
-                    guard offset + size <= data.count else { return nil }
-                    let value = data.subdata(in: offset..<offset+size).withUnsafeBytes { $0.load(as: T.self) }
-                    offset += size
-                    return value
-                }
-                
-                // Magic check (optional, but good for safety)
-                // We'll just read count first.
-                guard let count = read(Int32.self) else { throw NSError(domain: "BinaryIndex", code: 1) }
-                var loaded: [String: [Float]] = [:]
-                for _ in 0..<count {
-                    guard let idLen = read(Int32.self),
-                          offset + Int(idLen) <= data.count else { break }
-                    let id = String(decoding: data.subdata(in: offset..<offset+Int(idLen)), as: UTF8.self)
-                    offset += Int(idLen)
-                    
-                    guard let vecLen = read(Int32.self),
-                          offset + Int(vecLen * 4) <= data.count else { break }
-                    let vec = data.subdata(in: offset..<offset+Int(vecLen * 4)).withUnsafeBytes {
-                        Array(UnsafeBufferPointer(start: $0.baseAddress!.assumingMemoryBound(to: Float.self), count: Int(vecLen)))
-                    }
-                    offset += Int(vecLen * 4)
-                    loaded[id] = vec
-                }
-                vectors = loaded
-                dirty = false
-                return
-            }
-        } catch {
-            // Fallback to JSON
+        let data = try Data(contentsOf: storeURL)
+        if data.count < 4 { return }
+        
+        // Check for zlib compression (magic 0x78 0x9C or similar, but we'll try decompress)
+        let decompressed: Data
+        if let dec = try? (data as NSData).decompressed(using: .zlib) {
+            decompressed = dec as Data
+        } else {
+            decompressed = data
         }
         
-        let data = try Data(contentsOf: storeURL)
+        var offset = 0
+        func read<T>(_ type: T.Type) -> T? {
+            let size = MemoryLayout<T>.size
+            guard offset + size <= decompressed.count else { return nil }
+            let value = decompressed.subdata(in: offset..<offset+size).withUnsafeBytes { $0.load(as: T.self) }
+            offset += size
+            return value
+        }
+        
+        // Attempt binary load
+        if let count = read(Int32.self) {
+            var loaded: [String: [Float]] = [:]
+            for _ in 0..<count {
+                guard let idLen = read(Int32.self),
+                      offset + Int(idLen) <= decompressed.count else { break }
+                let id = String(decoding: decompressed.subdata(in: offset..<offset+Int(idLen)), as: UTF8.self)
+                offset += Int(idLen)
+                
+                guard let vecLen = read(Int32.self),
+                      offset + Int(vecLen * 2) <= decompressed.count else { break } // Float16 is 2 bytes
+                
+                // Read Float16 and convert to Float32 for memory
+                let f16Data = decompressed.subdata(in: offset..<offset+Int(vecLen * 2))
+                var f32Vec = [Float](repeating: 0, count: Int(vecLen))
+                
+                f16Data.withUnsafeBytes { ptr in
+                    let f16Ptr = ptr.baseAddress!.assumingMemoryBound(to: Float16.self)
+                    for j in 0..<Int(vecLen) {
+                        f32Vec[j] = Float(f16Ptr[j])
+                    }
+                }
+                
+                offset += Int(vecLen * 2)
+                loaded[id] = f32Vec
+            }
+            vectors = loaded
+            recalculateMagnitudes()
+            dirty = false
+            return
+        }
+        
+        // Fallback to legacy JSON if binary load fails
         vectors = try JSONDecoder().decode([String: [Float]].self, from: data)
+        recalculateMagnitudes()
         dirty = false
+    }
+
+    private func recalculateMagnitudes() {
+        magnitudes.removeAll()
+        for (id, v) in vectors {
+            magnitudes[id] = Self.calculateMagnitude(v)
+        }
+    }
+
+    private static func calculateMagnitude(_ v: [Float]) -> Float {
+        var magSq: Float = 0
+        vDSP_svesq(v, 1, &magSq, vDSP_Length(v.count))
+        return sqrt(magSq)
     }
 
     public func flush() throws {
@@ -106,22 +133,27 @@ public actor EmbeddingIndex {
             withIntermediateDirectories: true
         )
         
-        var data = Data()
+        var payload = Data()
         var count = Int32(vectors.count)
-        data.append(withUnsafeBytes(of: &count) { Data($0) })
+        payload.append(withUnsafeBytes(of: &count) { Data($0) })
         
         for (id, v) in vectors {
             let idData = Data(id.utf8)
             var idLen = Int32(idData.count)
-            data.append(withUnsafeBytes(of: &idLen) { Data($0) })
-            data.append(idData)
+            payload.append(withUnsafeBytes(of: &idLen) { Data($0) })
+            payload.append(idData)
             
             var vecLen = Int32(v.count)
-            data.append(withUnsafeBytes(of: &vecLen) { Data($0) })
-            v.withUnsafeBytes { data.append(Data($0)) }
+            payload.append(withUnsafeBytes(of: &vecLen) { Data($0) })
+            
+            // Quantize to Float16 for 50% space saving
+            let f16Vec = v.map { Float16($0) }
+            f16Vec.withUnsafeBytes { payload.append(Data($0)) }
         }
         
-        try data.write(to: storeURL, options: .atomic)
+        // Professional Compression: apply zlib to the already binary payload
+        let compressed = try (payload as NSData).compressed(using: .zlib) as Data
+        try compressed.write(to: storeURL, options: .atomic)
         dirty = false
     }
 }

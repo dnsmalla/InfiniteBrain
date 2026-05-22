@@ -5,6 +5,7 @@ model: claude-sonnet-4-6
 inputs:
   text: string                # one chunk of source text (the orchestrator splits long inputs)
   source_id: string           # id of the Source note
+  context_header: string      # the section/chapter header this chunk belongs to (if any)
   chunk_index: integer        # 0-based position of this chunk in the document
   chunk_total: integer        # total number of chunks the document was split into
 outputs:
@@ -21,6 +22,8 @@ without re-reading the source.
 You may receive only part of the document — `chunk_index` of `chunk_total`.
 Earlier and later chunks are atomised separately and merged. Don't try to
 infer cross-chunk structure; just emit good atomic units for what you see.
+Use the provided `context_header` to enrich unit titles or bodies if the 
+specific chunk starts mid-section and lacks its own heading.
 
 # Hard rules
 

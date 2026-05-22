@@ -25,6 +25,7 @@ public actor QueryService {
     public let twoPass: Bool
     public let candidateK: Int
     public let fullNotesBudget: Int
+    public let onUsage: UsageHandler?
 
     public init(
         skillRunner: SkillRunner,
@@ -33,7 +34,8 @@ public actor QueryService {
         index: EmbeddingIndex,
         twoPass: Bool = true,
         candidateK: Int = 12,
-        fullNotesBudget: Int = 4
+        fullNotesBudget: Int = 4,
+        onUsage: UsageHandler? = nil
     ) {
         self.skillRunner = skillRunner
         self.store = store
@@ -42,6 +44,7 @@ public actor QueryService {
         self.twoPass = twoPass
         self.candidateK = candidateK
         self.fullNotesBudget = fullNotesBudget
+        self.onUsage = onUsage
     }
 
     /// `topK` is honoured only in single-pass mode (legacy callers). Two-pass
@@ -79,7 +82,8 @@ public actor QueryService {
                 "question": question,
                 "candidates": summaries,
                 "full_notes_budget": fullNotesBudget,
-            ]
+            ],
+            onUsage: onUsage
         )
         let neededIds = (selection["needed_ids"] as? [String]) ?? []
 
@@ -99,7 +103,8 @@ public actor QueryService {
         // Pass 2: produce the answer.
         let answered = try await skillRunner.run(
             "answer-question",
-            input: ["question": question, "notes": loaded]
+            input: ["question": question, "notes": loaded],
+            onUsage: onUsage
         )
         return Answer(
             text: (answered["answer"] as? String) ?? "",
@@ -133,7 +138,8 @@ public actor QueryService {
         
         let discovery = try await skillRunner.run(
             "identify-missing-context",
-            input: ["question": question, "known": evalInput]
+            input: ["question": question, "known": evalInput],
+            onUsage: onUsage
         )
         
         let missingEntities = (discovery["missing_entities"] as? [String]) ?? []
@@ -172,7 +178,8 @@ public actor QueryService {
         
         let answered = try await skillRunner.run(
             "answer-question",
-            input: ["question": question, "notes": finalNotes]
+            input: ["question": question, "notes": finalNotes],
+            onUsage: onUsage
         )
         
         return Answer(
@@ -201,7 +208,8 @@ public actor QueryService {
 
         let answered = try await skillRunner.run(
             "answer-question",
-            input: ["question": question, "notes": loaded]
+            input: ["question": question, "notes": loaded],
+            onUsage: onUsage
         )
         return Answer(
             text: (answered["answer"] as? String) ?? "",

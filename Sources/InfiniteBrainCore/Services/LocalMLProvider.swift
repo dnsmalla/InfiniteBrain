@@ -6,7 +6,7 @@ import SharedLLMKit
 public final class LocalMLProvider: LLMClient, Sendable {
     public init() {}
     
-    public func complete(system: String, user: String, responseSchema: [String : Any]?) async throws -> String {
+    public func complete(system: String, user: String, responseSchema: [String : Any]?, onUsage: (@Sendable (LLMUsage) -> Void)?) async throws -> String {
         // In a real implementation, this would use MLX-Swift or Llama.cpp
         // to run a quantized model (e.g., Llama 3 8B) on device.
         // For Phase 11, we provide the infrastructure to swap to local.

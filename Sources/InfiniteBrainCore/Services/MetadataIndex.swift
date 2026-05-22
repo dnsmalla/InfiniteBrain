@@ -28,9 +28,17 @@ public actor MetadataIndex {
     }
     
     public func load() async -> Bool {
-        guard let data = try? Data(contentsOf: storeURL) else { return false }
-        var offset = 0
+        guard let rawData = try? Data(contentsOf: storeURL) else { return false }
         
+        // Decompress if compressed
+        let data: Data
+        if let dec = try? (rawData as NSData).decompressed(using: .zlib) {
+            data = dec as Data
+        } else {
+            data = rawData
+        }
+        
+        var offset = 0
         func readInt32() -> Int32? {
             guard offset + 4 <= data.count else { return nil }
             let val = data.subdata(in: offset..<offset+4).withUnsafeBytes { $0.load(as: Int32.self) }
@@ -87,19 +95,19 @@ public actor MetadataIndex {
     }
     
     public func save() async throws {
-        var data = Data()
+        var payload = Data()
         func appendInt32(_ val: Int32) {
             var v = val
-            withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
+            withUnsafeBytes(of: &v) { payload.append(contentsOf: $0) }
         }
         func appendDouble(_ val: Double) {
             var v = val
-            withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
+            withUnsafeBytes(of: &v) { payload.append(contentsOf: $0) }
         }
         func appendString(_ s: String) {
             let sData = s.data(using: .utf8)!
             appendInt32(Int32(sData.count))
-            data.append(sData)
+            payload.append(sData)
         }
         
         appendInt32(0x4D455441) // 'META'
@@ -120,7 +128,10 @@ public actor MetadataIndex {
             appendDouble(entry.x)
             appendDouble(entry.y)
         }
-        try data.write(to: storeURL, options: .atomic)
+        
+        // Professional Compression: apply zlib to the metadata payload
+        let compressed = try (payload as NSData).compressed(using: .zlib) as Data
+        try compressed.write(to: storeURL, options: .atomic)
     }
     
     public func update(_ note: Note) {

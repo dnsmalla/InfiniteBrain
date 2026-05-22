@@ -86,7 +86,7 @@ public actor VaultStore {
         guard let url = try await locateFile(forId: id) else {
             throw VaultStoreError.notFound(id: id)
         }
-        if let note = try? await read(id: id) {
+        if (try? await read(id: id)) != nil {
             await metadataIndex.remove(noteId: id)
         }
         try FileManager.default.removeItem(at: url)

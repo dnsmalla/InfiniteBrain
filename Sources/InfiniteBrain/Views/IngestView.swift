@@ -7,6 +7,7 @@ struct IngestView: View {
     @EnvironmentObject var ingest: IngestViewModel
     @State private var isTargeted = false
     @State private var showingWipeConfirm = false
+    @State private var showingUsageDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -24,35 +25,47 @@ struct IngestView: View {
     // MARK: - Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Ingest documents")
-                .font(.title.bold())
-            Text("Drag PDFs, text, or markdown files in. The pipeline atomises, classifies, summarises, and writes Obsidian-compatible notes into your vault.")
-                .font(.callout)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Ingest Knowledge")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+            
+            Text("Transform documents into atomic research notes using semantic analysis.")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.bottom, 4)
     }
 
     private var dropZone: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(isTargeted ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.05))
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6]))
-                .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
-            VStack(spacing: 8) {
-                Image(systemName: isTargeted ? "tray.and.arrow.down.fill" : "tray.and.arrow.down")
-                    .font(.system(size: 34, weight: .light))
+            if isTargeted {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(AppPalette.brand.opacity(0.1))
+                    .shadow(color: AppPalette.brand.opacity(0.2), radius: 15, y: 5)
+            } else {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.3))
+            }
+            
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(style: StrokeStyle(lineWidth: isTargeted ? 2 : 1, dash: isTargeted ? [] : [6]))
+                .foregroundStyle(isTargeted ? AppPalette.brand : Color.primary.opacity(0.1))
+            
+            VStack(spacing: 12) {
+                Image(systemName: isTargeted ? "arrow.down.doc.fill" : "arrow.down.doc")
+                    .font(.system(size: 40, weight: .light))
                     .foregroundStyle(isTargeted ? Color.accentColor : .secondary)
-                Text("Drop files here")
-                    .font(.headline)
-                Text("PDF · EPUB · Markdown · Plain text")
+                    .symbolEffect(.bounce, value: isTargeted)
+                
+                Text(isTargeted ? "Drop to Ingest" : "Drag files here")
+                    .font(.system(.headline, design: .rounded))
+                Text("PDF · EPUB · Markdown · Text")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
         }
-        .frame(height: 170)
+        .frame(height: 180)
         .onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: handleDrop)
     }
 
@@ -92,7 +105,7 @@ struct IngestView: View {
             .keyboardShortcut(.return, modifiers: [.command])
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(ingest.isRunning ? .red : .accentColor)
+            .tint(ingest.isRunning ? .red : AppPalette.brand)
             .disabled(!ingest.isRunning && ingest.droppedFiles.isEmpty)
 
             Button {
@@ -112,7 +125,20 @@ struct IngestView: View {
             Spacer()
             if let r = ingest.lastResult {
                 ResultPill(result: r)
+                if ingest.usageSummary != nil {
+                    Button {
+                        showingUsageDetails = true
+                    } label: {
+                        Image(systemName: "chart.bar.doc.horizontal")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("View cost and token usage")
+                }
             }
+        }
+        .sheet(isPresented: $showingUsageDetails) {
+            UsageDetailsView(summary: ingest.usageSummary)
+                .frame(minWidth: 400, minHeight: 300)
         }
         .confirmationDialog(
             "Re-ingest will delete all notes and the checkpoint for the dropped file(s), then run from scratch.",
@@ -130,27 +156,34 @@ struct IngestView: View {
     }
 
     private var log: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Activity")
-                .font(.caption.smallCaps())
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Activity Log")
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .foregroundStyle(.tertiary)
+            
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     if ingest.log.isEmpty {
-                        Text("Run an ingest to see progress here.")
-                            .font(.callout).foregroundStyle(.tertiary)
-                            .padding(.vertical, 4)
+                        Text("Awaiting input...")
+                            .font(.system(.callout, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .padding(.vertical, 8)
                     } else {
                         ForEach(Array(ingest.log.enumerated()), id: \.offset) { _, line in
-                            Text(line).font(.system(.callout, design: .monospaced))
+                            LogRow(text: line)
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+                .padding(14)
             }
-            .frame(minHeight: 120)
+            .frame(minHeight: 140)
+            .background(AppPalette.surface.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(AppPalette.border, lineWidth: 1)
+            )
         }
     }
 
@@ -187,21 +220,99 @@ private struct ResultPill: View {
     let result: IngestResult
     var body: some View {
         HStack(spacing: 8) {
-            stat(result.added,       "added",     color: .green)
-            stat(result.improved,    "improved",  color: .blue)
-            stat(result.skipped,     "skipped",   color: .secondary)
+            BadgeView("\(result.added) added", color: .green)
+            BadgeView("\(result.improved) improved", color: .blue)
+            BadgeView("\(result.skipped) skipped", color: .secondary)
             if result.quarantined > 0 {
-                stat(result.quarantined, "quarantined", color: .orange)
+                BadgeView("\(result.quarantined) quarantined", color: .orange)
             }
         }
-        .font(.caption)
-        .padding(.horizontal, 10).padding(.vertical, 4)
-        .background(.background.secondary, in: Capsule())
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(Capsule().fill(.ultraThinMaterial))
     }
-    private func stat(_ n: Int, _ label: String, color: Color) -> some View {
-        HStack(spacing: 3) {
-            Text("\(n)").bold().foregroundStyle(color)
-            Text(label).foregroundStyle(.secondary)
+}
+
+private struct LogRow: View {
+    let text: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.system(size: 10, weight: .bold))
+                .padding(.top, 4)
+            Text(text)
+                .font(.system(.callout, design: .monospaced))
+                .foregroundStyle(.primary.opacity(0.9))
+        }
+    }
+    
+    private var icon: String {
+        if text.contains("→") { return "arrow.right.circle.fill" }
+        if text.contains("✅") || text.contains("done") { return "checkmark.circle.fill" }
+        if text.contains("⚠️") || text.contains("error") { return "exclamationmark.triangle.fill" }
+        if text.contains("⏹") { return "stop.circle.fill" }
+        return "circle.fill"
+    }
+    
+    private var color: Color {
+        if text.contains("error") { return .red }
+        if text.contains("→") { return .accentColor }
+        if text.contains("✅") || text.contains("done") { return .green }
+        return .secondary.opacity(0.5)
+    }
+}
+
+private struct UsageDetailsView: View {
+    let summary: UsageSummary?
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                if let s = summary {
+                    HStack(spacing: 30) {
+                        stat("Cost", "$\(String(format: "%.4f", s.totalCost))", color: .green)
+                        stat("Tokens", "\(s.totalTokens)", color: .blue)
+                        stat("API Calls", "\(s.totalCalls)", color: .orange)
+                    }
+                    .padding()
+                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Breakdown").font(.headline)
+                        Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 10) {
+                            GridRow {
+                                Text("Metric")
+                                Text("Value").gridColumnAlignment(.trailing)
+                            }
+                            .font(.caption.bold()).foregroundStyle(.secondary)
+                            
+                            Divider()
+                            
+                            GridRow { Text("Input Tokens"); Text("\(s.inputTokens)") }
+                            GridRow { Text("Output Tokens"); Text("\(s.outputTokens)") }
+                        }
+                    }
+                    .padding()
+                } else {
+                    Text("No usage data available").foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Ingest Telemetry")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+    
+    private func stat(_ label: String, _ value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            Text(value).font(.title3.bold()).foregroundStyle(color)
         }
     }
 }

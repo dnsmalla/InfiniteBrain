@@ -15,7 +15,6 @@ public struct ClaudeCLIClient: LLMClient {
     public let executablePath: String
     public let timeout: TimeInterval
     private let runner = CLIProcessRunner()
-
     public init(executablePath: String? = nil, timeout: TimeInterval = 180) throws {
         guard let path = executablePath ?? CLILocator.find("claude") else {
             throw CLIClientError.executableNotFound("claude")
@@ -24,7 +23,12 @@ public struct ClaudeCLIClient: LLMClient {
         self.timeout = timeout
     }
 
-    public func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    public func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         let prompt = PromptMerge.merge(system: system, user: user)
         return try runner.run(
             executable: executablePath,
@@ -46,7 +50,6 @@ public struct CodexCLIClient: LLMClient {
     public let executablePath: String
     public let timeout: TimeInterval
     private let runner = CLIProcessRunner()
-
     public init(executablePath: String? = nil, timeout: TimeInterval = 180) throws {
         guard let path = executablePath ?? CLILocator.find("codex") else {
             throw CLIClientError.executableNotFound("codex")
@@ -55,7 +58,12 @@ public struct CodexCLIClient: LLMClient {
         self.timeout = timeout
     }
 
-    public func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    public func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         let prompt = PromptMerge.merge(system: system, user: user)
         // Codex writes its final reply to a file we have to read back, not to
         // stdout — so we ask for `--output-last-message` and clean up after.
@@ -109,7 +117,12 @@ public struct CursorCLIClient: LLMClient {
         self.timeout = timeout
     }
 
-    public func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    public func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         let prompt = PromptMerge.merge(system: system, user: user)
         return try runner.run(
             executable: executablePath,

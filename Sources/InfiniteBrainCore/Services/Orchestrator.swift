@@ -38,6 +38,7 @@ enum UnitOutcome: Sendable {
 /// at once. Defaults to 4. Within a batch, units don't see each other in the
 /// candidate set — that's the documented trade-off for the speedup.
 public typealias ProgressHandler = @Sendable (String) async -> Void
+public typealias UsageHandler = @Sendable (LLMUsage) -> Void
 
 public actor Orchestrator {
     public let checkpoints: CheckpointStore
@@ -52,6 +53,7 @@ public actor Orchestrator {
     public let chunkSize: Int
     public let concurrency: Int
     public let onProgress: ProgressHandler?
+    public let onUsage: UsageHandler?
 
     public init(
         skillRunner: SkillRunner,
@@ -65,7 +67,8 @@ public actor Orchestrator {
         confidenceThreshold: Float = 0.7,
         chunkSize: Int = 16_000,
         concurrency: Int = 2,
-        onProgress: ProgressHandler? = nil
+        onProgress: ProgressHandler? = nil,
+        onUsage: UsageHandler? = nil
     ) {
         self.skillRunner = skillRunner
         self.idGenerator = idGenerator
@@ -79,6 +82,7 @@ public actor Orchestrator {
         self.chunkSize = chunkSize
         self.concurrency = max(1, concurrency)
         self.onProgress = onProgress
+        self.onUsage = onUsage
     }
 
     /// Reverts an entire ingestion batch, deleting all generated atomic notes.
@@ -91,7 +95,7 @@ public actor Orchestrator {
         
         for id in noteIds {
             // Read note first to know where it points (to update indices)
-            if let note = try? await store.read(id: id) {
+            if let _ = try? await store.read(id: id) {
                 await metadataIndex.remove(noteId: id)
                 if let index = index { await index.remove(id: id) }
             }
@@ -113,7 +117,14 @@ public actor Orchestrator {
         let text = try await readText(from: file)
         let fileHash = Self.hash(text)
 
-        let chunks = TextChunker().chunk(text, targetChars: chunkSize)
+        // Professional Scan: Identify active regions and skip junk
+        let scanResult = DocumentScanner().scan(text)
+        if scanResult.skippedCount > 0 {
+            await progress("professional scan: identifies \(scanResult.skippedCount) junk regions to skip")
+        }
+        
+        let activeText = scanResult.activeRanges.map { String(text[$0]) }.joined(separator: "\n\n")
+        let chunks = TextChunker().chunk(activeText, targetChars: chunkSize)
         let total = chunks.count
 
         // Re-ingest logic:
@@ -221,11 +232,19 @@ public actor Orchestrator {
                 guard activeLLMCalls < concurrency, let i = chunkIterator.next() else { return }
                 activeLLMCalls += 1
                 group.addTask {
+                    let chunk = chunks[i]
                     do {
-                        let r = try await self.skillRunner.run("atomize-text", input: [
-                            "text": chunks[i], "source_id": sourceId,
-                            "chunk_index": i, "chunk_total": total,
-                        ])
+                        let r = try await self.skillRunner.run(
+                            "atomize-text",
+                            input: [
+                                "text": chunk.text,
+                                "source_id": sourceNote.id,
+                                "context_header": chunk.contextHeader ?? "",
+                                "chunk_index": i,
+                                "chunk_total": total
+                            ],
+                            onUsage: self.onUsage
+                        )
                         let atomized = (r["units"] as? [[String: Any]]) ?? []
                         return .chunkAtomized(index: i, units: atomized)
                     } catch {
@@ -356,7 +375,8 @@ public actor Orchestrator {
 
         let processed = try await skillRunner.run(
             "process-unit",
-            input: ["unit_title": title, "unit_body": body]
+            input: ["unit_title": title, "unit_body": body],
+            onUsage: onUsage
         )
         let typeRaw = (processed["type"] as? String) ?? "note"
         let confidence = Self.numberValue(processed["confidence"])
@@ -389,7 +409,8 @@ public actor Orchestrator {
             input: [
                 "candidate": ["title": title, "body": body, "suggested_type": typeRaw],
                 "nearest": nearest,
-            ]
+            ],
+            onUsage: onUsage
         )
         let decision = (reconciled["decision"] as? String) ?? "add"
 
@@ -407,7 +428,8 @@ public actor Orchestrator {
                 input: [
                     "existing": ["title": existing.title, "body": existing.body, "summary": existing.summary],
                     "candidate": ["title": title, "body": body],
-                ]
+                ],
+                onUsage: onUsage
             )
             let newBody    = (improved["new_body"]    as? String) ?? existing.body
             let newSummary = (improved["new_summary"] as? String) ?? existing.summary
@@ -445,7 +467,8 @@ public actor Orchestrator {
                             "title": note.title, "summary": note.summary, "body": note.body,
                         ],
                         "candidates": nearest,
-                    ]
+                    ],
+                    onUsage: onUsage
                 )) ?? [:]
                 note.edges.append(contentsOf: Self.parseEdges(from: inferred))
             }

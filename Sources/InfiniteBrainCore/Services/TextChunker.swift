@@ -1,95 +1,126 @@
 import Foundation
 
+/// A semantic boundary is a position in the text where a split is likely to 
+/// be clean and preserve context.
+struct SemanticBoundary {
+    let range: Range<String.Index>
+    let score: Int
+    let label: String
+}
+
+public struct Chunk: Sendable {
+    public let text: String
+    public let contextHeader: String?
+}
+
 /// Splits long input into chunks of at most `targetChars` characters,
-/// preferring paragraph boundaries, then sentence boundaries, then a hard
-/// character split as a last resort. The chunks are passed to `atomize-text`
-/// one by one so a 500-page book doesn't blow Claude's context window or
-/// silently truncate against `maxTokens` on the response side.
+/// preferring structural boundaries (headers, paragraphs) over hard character
+/// limits. "Divide in perfect numbers" means splitting where one logical unit
+/// ends and another begins.
 public struct TextChunker: Sendable {
     public init() {}
 
-    public func chunk(_ text: String, targetChars: Int) -> [String] {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, targetChars > 0 else { return [] }
-
-        let paragraphs = trimmed
-            .components(separatedBy: "\n\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        var chunks: [String] = []
-        var current = ""
-
-        for para in paragraphs {
-            if para.count > targetChars {
-                // Flush whatever's pending so the giant paragraph starts fresh.
-                if !current.isEmpty { chunks.append(current); current = "" }
-                chunks.append(contentsOf: splitOversizedParagraph(para, targetChars: targetChars))
-                continue
+    public func chunk(_ text: String, targetChars: Int) -> [Chunk] {
+        guard !text.isEmpty, targetChars > 0 else { return [] }
+        
+        let boundaries = findBoundaries(in: text)
+        var chunks: [Chunk] = []
+        var startIndex = text.startIndex
+        var activeHeader: String? = nil
+        
+        while startIndex < text.endIndex {
+            // Update active header before picking split point
+            // Look for headers that end before or at startIndex
+            if let lastHeader = boundaries.filter({ $0.label == "header" && $0.range.lowerBound <= startIndex }).last {
+                // Extract header text (remove #s)
+                let headerText = String(text[lastHeader.range]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+                activeHeader = headerText
             }
-            let separator = current.isEmpty ? "" : "\n\n"
-            if current.count + separator.count + para.count <= targetChars {
-                current += separator + para
+
+            let limitIndex = text.index(startIndex, offsetBy: targetChars, limitedBy: text.endIndex) ?? text.endIndex
+            if limitIndex == text.endIndex {
+                let finalStr = String(text[startIndex...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !finalStr.isEmpty {
+                    chunks.append(Chunk(text: finalStr, contextHeader: activeHeader))
+                }
+                break
+            }
+            
+            // Flex region
+            let flexSize = Int(Double(targetChars) * 0.3)
+            let flexStart = text.index(limitIndex, offsetBy: -flexSize, limitedBy: startIndex) ?? startIndex
+            
+            let best = boundaries.filter { $0.range.lowerBound >= flexStart && $0.range.upperBound <= limitIndex }
+                .max { a, b in a.score < b.score }
+            
+            let splitIndex: String.Index
+            if let b = best {
+                splitIndex = b.range.lowerBound
             } else {
-                chunks.append(current)
-                current = para
+                let searchRange = flexStart..<limitIndex
+                if let space = text.rangeOfCharacter(from: .whitespacesAndNewlines, options: .backwards, range: searchRange) {
+                    splitIndex = space.lowerBound
+                } else {
+                    splitIndex = limitIndex
+                }
+            }
+            
+            let chunkStr = String(text[startIndex..<splitIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !chunkStr.isEmpty {
+                chunks.append(Chunk(text: chunkStr, contextHeader: activeHeader))
+            }
+            
+            startIndex = splitIndex
+            while startIndex < text.endIndex, text[startIndex].isWhitespace {
+                startIndex = text.index(after: startIndex)
             }
         }
-        if !current.isEmpty { chunks.append(current) }
+        
         return chunks
     }
 
-    /// Split a single oversized paragraph: try sentences, then hard-split.
-    private func splitOversizedParagraph(_ para: String, targetChars: Int) -> [String] {
-        let sentences = splitIntoSentences(para)
-
-        if sentences.count > 1 {
-            var packed: [String] = []
-            var current = ""
-            for s in sentences {
-                if s.count > targetChars {
-                    if !current.isEmpty { packed.append(current); current = "" }
-                    packed.append(contentsOf: hardSplit(s, targetChars: targetChars))
-                    continue
-                }
-                let separator = current.isEmpty ? "" : " "
-                if current.count + separator.count + s.count <= targetChars {
-                    current += separator + s
-                } else {
-                    packed.append(current); current = s
-                }
-            }
-            if !current.isEmpty { packed.append(current) }
-            return packed
-        }
-
-        return hardSplit(para, targetChars: targetChars)
-    }
-
-    /// Sentence-ish splitting that keeps the terminator with the sentence.
-    private func splitIntoSentences(_ s: String) -> [String] {
-        var out: [String] = []
-        var current = ""
-        for ch in s {
-            current.append(ch)
-            if ch == "." || ch == "!" || ch == "?" {
-                out.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
-                current = ""
+    /// Identifies structural markers like headers, horizontal rules, and 
+    /// major breaks. High score means "splitting here is very safe".
+    private func findBoundaries(in text: String) -> [SemanticBoundary] {
+        var results: [SemanticBoundary] = []
+        
+        // 1. Headers (High score: 100)
+        // Match: double-newline + optional #s + space + Title
+        // Note: simplified regex for performance
+        let headerRegex = try! NSRegularExpression(pattern: "\n{2,}(#{1,6}\\s+.+)", options: [])
+        let nsText = text as NSString
+        headerRegex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) { match, _, _ in
+            if let r = match?.range(at: 1), let range = Range(r, in: text) {
+                results.append(SemanticBoundary(range: range, score: 100, label: "header"))
             }
         }
-        let tail = current.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !tail.isEmpty { out.append(tail) }
-        return out.filter { !$0.isEmpty }
-    }
-
-    private func hardSplit(_ s: String, targetChars: Int) -> [String] {
-        var out: [String] = []
-        var i = s.startIndex
-        while i < s.endIndex {
-            let end = s.index(i, offsetBy: targetChars, limitedBy: s.endIndex) ?? s.endIndex
-            out.append(String(s[i..<end]))
-            i = end
+        
+        // 2. Horizontal Rules or Page Breaks (High score: 90)
+        let hrRegex = try! NSRegularExpression(pattern: "\n{2,}([-*_=]{3,}\\s*\n)", options: [])
+        hrRegex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) { match, _, _ in
+            if let r = match?.range(at: 1), let range = Range(r, in: text) {
+                results.append(SemanticBoundary(range: range, score: 90, label: "hr"))
+            }
         }
-        return out
+        
+        // 3. Paragraph Breaks (Score: 50)
+        let paraRegex = try! NSRegularExpression(pattern: "\n{2,}", options: [])
+        paraRegex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) { match, _, _ in
+            if let r = match?.range, let range = Range(r, in: text) {
+                results.append(SemanticBoundary(range: range, score: 50, label: "paragraph"))
+            }
+        }
+        
+        // 4. Sentences (Score: 20)
+        // (Rough sentence end: . ! ? followed by space or newline)
+        let sentRegex = try! NSRegularExpression(pattern: "[.!?][ \t\n]", options: [])
+        sentRegex.enumerateMatches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) { match, _, _ in
+            if let r = match?.range, let range = Range(r, in: text) {
+                results.append(SemanticBoundary(range: range, score: 20, label: "sentence"))
+            }
+        }
+        
+        return results
     }
 }

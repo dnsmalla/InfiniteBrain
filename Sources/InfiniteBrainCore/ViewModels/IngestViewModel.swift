@@ -9,6 +9,7 @@ public final class IngestViewModel: ObservableObject {
     @Published public var log: [String] = []
     @Published public var isRunning: Bool = false
     @Published public var lastResult: IngestResult?
+    @Published public var usageSummary: UsageSummary?
 
     /// Holds the currently-running ingest Task so the Stop button can
     /// cancel it. `nil` when no run is in flight.
@@ -39,6 +40,7 @@ public final class IngestViewModel: ObservableObject {
     public func toggle(settings: AppSettings) {
         if let existing = runTask {
             existing.cancel()
+            LogService.shared.info("Stop requested by user", category: .ingest)
             append("⏹ stop requested — finishing in-flight subtasks…")
             runTask = nil
             return
@@ -57,10 +59,12 @@ public final class IngestViewModel: ObservableObject {
         let vault = Vault(root: vaultURL)
         let store = VaultStore(vault: vault)
         
-        let orchestrator = Orchestrator(
-            skillRunner: SkillRunner(client: DummyLLMClient(), skillsRoot: vault.skillsDir),
-            checkpoints: CheckpointStore(vault: vault),
-            metadataIndex: store.metadataIndex
+        let orchestrator = UnifiedIngestionService.makeOrchestrator(
+            vault: vault, 
+            client: SilentLLMClient(), 
+            concurrency: settings.concurrency,
+            onProgress: { _ in },
+            onUsage: { _ in }
         )
 
         for file in droppedFiles {
@@ -85,10 +89,12 @@ public final class IngestViewModel: ObservableObject {
         let vault = Vault(root: vaultURL)
         let store = VaultStore(vault: vault)
         
-        let orchestrator = Orchestrator(
-            skillRunner: SkillRunner(client: DummyLLMClient(), skillsRoot: vault.skillsDir),
-            checkpoints: CheckpointStore(vault: vault),
-            metadataIndex: store.metadataIndex
+        let orchestrator = UnifiedIngestionService.makeOrchestrator(
+            vault: vault, 
+            client: SilentLLMClient(), 
+            concurrency: settings.concurrency,
+            onProgress: { _ in },
+            onUsage: { _ in }
         )
 
         guard let content = try? String(contentsOf: sourceURL, encoding: .utf8),
@@ -104,9 +110,9 @@ public final class IngestViewModel: ObservableObject {
         }
     }
     
-    // Dummy client for non-LLM operations
-    private class DummyLLMClient: LLMClient, @unchecked Sendable {
-        func complete(system: String, user: String, responseSchema: [String : Any]?) async throws -> String {
+    // Client for non-LLM metadata operations
+    private class SilentLLMClient: LLMClient, @unchecked Sendable {
+        func complete(system: String, user: String, responseSchema: [String : Any]?, onUsage: (@Sendable (LLMUsage) -> Void)?) async throws -> String {
             return ""
         }
     }
@@ -130,7 +136,7 @@ public final class IngestViewModel: ObservableObject {
         let apiKey = (try? settings.apiKey()) ?? nil
         let client: LLMClient
         do {
-            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey)
+            client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey, gate: GlobalRateGate.shared)
         } catch LLMClientFactory.FactoryError.missingAPIKey {
             let alts = LLMProviderKind.allCases
                 .filter { $0 != .anthropic }
@@ -157,13 +163,13 @@ public final class IngestViewModel: ObservableObject {
         let vault = Vault(root: vaultURL)
         do { try VaultInitializer().ensureSeeded(vault: vault) }
         catch { append("could not seed vault: \(error.localizedDescription)") }
-        let store = VaultStore(vault: vault)
-        let skillsRoot = Self.skillsRoot(for: vault)
-        let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
-
-        let indexURL = vault.sidecar.appendingPathComponent("embeddings.json")
+        
+        let indexURL = vault.sidecar.appendingPathComponent("embeddings.bin")
         let index = EmbeddingIndex(storeURL: indexURL)
         try? await index.load()
+
+        await GlobalRateGate.shared.setMaxConcurrent(settings.concurrency)
+        await UsageTracker.shared.setPersistURL(vault.sidecar.appendingPathComponent("usage.json"))
 
         // Capture-safe progress sink
         let progressSink: ProgressHandler = { line in
@@ -171,14 +177,26 @@ public final class IngestViewModel: ObservableObject {
                 self.append("   · \(line)")
             }
         }
-        let orchestrator = Orchestrator(
-            skillRunner: runner,
-            checkpoints: CheckpointStore(vault: vault),
-            embeddings: NLEmbeddingProvider(),
-            index: index,
-            metadataIndex: store.metadataIndex,
-            concurrency: settings.concurrency,
-            onProgress: progressSink
+        
+        let usageSink: UsageHandler = { usage in
+            Task {
+                await UsageTracker.shared.record(metric: UsageMetric(
+                    timestamp: Date(),
+                    skillName: "ingest", // Note: SkillRunner could pass skillName if we extended the callback
+                    provider: settings.provider.displayName,
+                    inputTokens: usage.inputTokens,
+                    outputTokens: usage.outputTokens,
+                    latencySeconds: 0 // AnthropicClient should ideally measure this
+                ))
+            }
+        }
+        
+        let orchestrator = UnifiedIngestionService.makeOrchestrator(
+            vault: vault, 
+            client: client, 
+            concurrency: settings.concurrency, 
+            onProgress: progressSink, 
+            onUsage: usageSink
         )
 
         var totals = IngestResult()
@@ -209,6 +227,10 @@ public final class IngestViewModel: ObservableObject {
                     totals.quarantined += r.quarantined
                 }
             }
+            
+            let summary = await UsageTracker.shared.getSummary()
+            self.usageSummary = summary
+            LogService.shared.info("Ingest batch complete. Total cost: $\(String(format: "%.4f", summary.totalCost))", category: .ingest)
         }
         lastResult = totals
         append("done. total — added \(totals.added), improved \(totals.improved), skipped \(totals.skipped)")
@@ -304,7 +326,6 @@ public final class IngestViewModel: ObservableObject {
             
             // 2. Identify new or changed notes
             // (Note: we use contentHash to detect changes without full text comparison)
-            let indexHashes = Dictionary(uniqueKeysWithValues: indexEntries.map { ($0.id, "") }) // In real app, MetadataIndex should store hash
             
             // For now, we Re-update all disk notes into the index. 
             // In a larger vault, we'd only do this for files with newer mtime.

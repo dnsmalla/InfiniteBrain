@@ -23,100 +23,118 @@ struct GraphView: View {
     @State private var notesCache: [Note] = []
 
     var body: some View {
-        HSplitView {
-            GeometryReader { geo in
-                TimelineView(.animation) { timeline in
-                    Canvas { ctx, size in
-                        if isSimulating {
-                            simulation?.step(canvasSize: size)
-                            if Date().timeIntervalSince(lastSaveTime) > 2.0 {
-                                persistPositions()
+            ZStack(alignment: .topTrailing) {
+                GeometryReader { geo in
+                    TimelineView(.animation) { timeline in
+                        Canvas { ctx, size in
+                            if isSimulating {
+                                simulation?.step(canvasSize: size)
+                                if Date().timeIntervalSince(lastSaveTime) > 2.0 {
+                                    persistPositions()
+                                }
                             }
-                        }
-                        
-                        let viewport = CGRect(x: -offset.width / scale, y: -offset.height / scale,
-                                              width: size.width / scale, height: size.height / scale)
-                        let visibleRect = viewport.insetBy(dx: -20, dy: -20)
+                            
+                            let viewport = CGRect(x: -offset.width / scale, y: -offset.height / scale,
+                                                  width: size.width / scale, height: size.height / scale)
+                            let visibleRect = viewport.insetBy(dx: -40, dy: -40)
 
-                        ctx.concatenate(CGAffineTransform(translationX: offset.width, y: offset.height))
-                        ctx.concatenate(CGAffineTransform(scaleX: scale, y: scale))
-                        
-                        if let sim = simulation {
-                            let nodePositions = Dictionary(uniqueKeysWithValues: sim.nodes.map { ($0.id, $0.position) })
+                            ctx.concatenate(CGAffineTransform(translationX: offset.width, y: offset.height))
+                            ctx.concatenate(CGAffineTransform(scaleX: scale, y: scale))
                             
-                            // Edges
-                            for e in sim.edges {
-                                guard let p1 = nodePositions[e.fromId], let p2 = nodePositions[e.toId] else { continue }
-                                if !visibleRect.contains(p1) && !visibleRect.contains(p2) { continue }
-                                var path = Path()
-                                path.move(to: p1)
-                                path.addLine(to: p2)
-                                ctx.stroke(path, with: .color(.secondary.opacity(0.25)), lineWidth: 0.6 / scale)
-                            }
-                            
-                            // Nodes
-                            for n in sim.nodes {
-                                if !visibleRect.contains(n.position) { continue }
-                                guard let full = data.nodes.first(where: { $0.id == n.id }) else { continue }
+                            if let sim = simulation {
+                                let nodePositions = Dictionary(uniqueKeysWithValues: sim.nodes.map { ($0.id, $0.position) })
                                 
-                                let r: CGFloat = (n.id == selected?.id ? 8 : 5) / scale
-                                let rect = CGRect(x: n.position.x - r, y: n.position.y - r, width: r*2, height: r*2)
-                                ctx.fill(Path(ellipseIn: rect), with: .color(NodePalette.color(for: full.type)))
-                                if n.id == selected?.id {
-                                    let ring = Path(ellipseIn: rect.insetBy(dx: -3/scale, dy: -3/scale))
-                                    ctx.stroke(ring, with: .color(.primary.opacity(0.6)), lineWidth: 1.5 / scale)
+                                // Edges
+                                for e in sim.edges {
+                                    guard let p1 = nodePositions[e.fromId], let p2 = nodePositions[e.toId] else { continue }
+                                    if !visibleRect.contains(p1) && !visibleRect.contains(p2) { continue }
+                                    var path = Path()
+                                    path.move(to: p1)
+                                    path.addLine(to: p2)
+                                    
+                                    // Sleek edges
+                                    let isRelated = (e.fromId == selected?.id || e.toId == selected?.id)
+                                    let opacity = isRelated ? 1.0 : 0.6
+                                    let width = (isRelated ? 3.0 : 1.5) / max(scale, 0.5)
+                                    
+                                    ctx.stroke(path, with: .color(.primary.opacity(opacity)), lineWidth: width)
+                                }
+                                
+                                // Nodes with Glow
+                                for n in sim.nodes {
+                                    if !visibleRect.contains(n.position) { continue }
+                                    guard let full = data.nodes.first(where: { $0.id == n.id }) else { continue }
+                                    
+                                    let isSelected = n.id == selected?.id
+                                    // Nodes stay visible even when zoomed out:
+                                    let baseR: CGFloat = isSelected ? 12 : 8
+                                    let r = max(baseR, baseR / (scale * 0.5)) 
+                                    
+                                    let rect = CGRect(x: n.position.x - r, y: n.position.y - r, width: r*2, height: r*2)
+                                    let color = NodePalette.color(for: full.type)
+                                    
+                                    // Draw Node Core (Solid, high visibility)
+                                    ctx.addFilter(.blur(radius: 0))
+                                    let nodePath = Path(ellipseIn: rect)
+                                    ctx.fill(nodePath, with: .color(color))
+                                    
+                                    // Stronger outline for definition
+                                    ctx.stroke(nodePath, with: .color(.black.opacity(0.4)), lineWidth: 2.0 / max(scale, 0.5))
+                                    
+                                    if isSelected {
+                                        let ring = Path(ellipseIn: rect.insetBy(dx: -6/scale, dy: -6/scale))
+                                        ctx.stroke(ring, with: .color(AppPalette.brand), lineWidth: 4.0 / max(scale, 0.5))
+                                    }
                                 }
                             }
                         }
-                    }
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .gesture(
-                        SimultaneousGesture(
-                            MagnificationGesture()
-                                .onChanged { val in
-                                    let delta = val / lastScale
-                                    lastScale = val
-                                    scale *= delta
-                                }
-                                .onEnded { _ in lastScale = 1.0 },
-                            DragGesture()
-                                .onChanged { val in
-                                    let delta = CGSize(width: val.translation.width - lastOffset.width,
-                                                       height: val.translation.height - lastOffset.height)
-                                    lastOffset = val.translation
-                                    offset = CGSize(width: offset.width + delta.width,
-                                                    height: offset.height + delta.height)
-                                }
-                                .onEnded { _ in lastOffset = .zero }
+                        .background(Color(nsColor: .windowBackgroundColor))
+                        .gesture(
+                            SimultaneousGesture(
+                                MagnificationGesture()
+                                    .onChanged { val in
+                                        let delta = val / lastScale
+                                        lastScale = val
+                                        scale *= delta
+                                    }
+                                    .onEnded { _ in lastScale = 1.0 },
+                                DragGesture()
+                                    .onChanged { val in
+                                        let delta = CGSize(width: val.translation.width - lastOffset.width,
+                                                           height: val.translation.height - lastOffset.height)
+                                        lastOffset = val.translation
+                                        offset = CGSize(width: offset.width + delta.width,
+                                                        height: offset.height + delta.height)
+                                    }
+                                    .onEnded { _ in lastOffset = .zero }
+                            )
                         )
-                    )
-                    .gesture(
-                        SpatialTapGesture()
-                            .onEnded { event in
-                                let transformed = CGPoint(
-                                    x: (event.location.x - offset.width) / scale,
-                                    y: (event.location.y - offset.height) / scale
-                                )
-                                selected = hitTest(transformed)
-                            }
-                    )
+                        .gesture(
+                            SpatialTapGesture()
+                                .onEnded { event in
+                                    let transformed = CGPoint(
+                                        x: (event.location.x - offset.width) / scale,
+                                        y: (event.location.y - offset.height) / scale
+                                    )
+                                    selected = hitTest(transformed)
+                                }
+                        )
+                    }
+                    .onAppear {
+                        canvasSize = geo.size
+                        Task { await reload() }
+                    }
+                    .onChange(of: geo.size) { _, new in
+                        canvasSize = new
+                    }
                 }
-                .onAppear {
-                    canvasSize = geo.size
-                    Task { await reload() }
-                }
-                .onChange(of: geo.size) { _, new in
-                    canvasSize = new
-                }
-                .toolbar {
+                
+                VStack(alignment: .trailing, spacing: 12) {
                     toolbarContent
+                    sidebar
                 }
+                .padding(24)
             }
-            .frame(minWidth: 480, minHeight: 400)
-
-            sidebar
-                .frame(width: 280)
-        }
         .onChange(of: ingest.lastResult) { _, _ in
             Task { await reload() }
         }
@@ -128,55 +146,98 @@ struct GraphView: View {
     // MARK: - Components
 
     private var toolbarContent: some View {
-        Group {
+        HStack(spacing: 4) {
             Button {
                 isSimulating.toggle()
             } label: {
-                Label(isSimulating ? "Pause" : "Resume", systemImage: isSimulating ? "pause.fill" : "play.fill")
+                Image(systemName: isSimulating ? "pause.fill" : "play.fill")
+                    .frame(width: 32, height: 32)
             }
+            .buttonStyle(.plain)
+            
+            Divider().frame(height: 16)
+            
             Button {
                 scale = 1.0
                 offset = .zero
             } label: {
-                Image(systemName: "arrow.up.left.and.down.right.and.arrow.up.right.and.arrow.down.left")
+                Image(systemName: "scope")
+                    .frame(width: 32, height: 32)
             }
+            .buttonStyle(.plain)
+            
             Button(action: { Task { await reload() } }) {
                 Image(systemName: "arrow.clockwise")
+                    .frame(width: 32, height: 32)
             }
-            Text("\(data.nodes.count) nodes")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            
+            Divider().frame(height: 16)
+            
+            Text("\(data.nodes.count) Nodes")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .padding(.horizontal, 8)
         }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(AppPalette.border, lineWidth: 1))
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             if let s = selected {
-                Text(s.title).font(.headline)
-                Text(s.summary).font(.callout).foregroundStyle(.secondary)
+                Text(s.title)
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(s.summary)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 8)
                 
                 if !currentBacklinks.isEmpty {
                     Divider()
-                    Text("Backlinks").font(.caption.bold())
-                    ForEach(currentBacklinks) { bl in
-                        Button(bl.title) { selected = bl }
-                            .buttonStyle(.link).font(.caption)
+                    Text("Semantic Backlinks")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                        .textCase(.uppercase)
+                    
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(currentBacklinks) { bl in
+                                Button(action: { selected = bl }) {
+                                    HStack {
+                                        Circle().fill(NodePalette.color(for: bl.type)).frame(width: 8, height: 8)
+                                        Text(bl.title).font(.caption).lineLimit(2)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
                 }
             } else {
-                Text("Legend").font(.headline)
+                Text("Knowledge Legend")
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                Divider()
                 ForEach(NodeType.allCases, id: \.self) { t in
                     HStack {
-                        Circle().fill(NodePalette.color(for: t)).frame(width: 8, height: 8)
-                        Text(t.rawValue).font(.caption)
+                        Circle().fill(NodePalette.color(for: t)).frame(width: 10, height: 10)
+                            .shadow(color: NodePalette.color(for: t).opacity(0.8), radius: 3)
+                        Text(t.rawValue.replacingOccurrences(of: "-", with: " ").capitalized)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(.secondary)
                     }
+                    .padding(.vertical, 1)
                 }
             }
             Spacer()
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.regularMaterial)
+        .padding(20)
+        .frame(width: 260)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
+        .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
     }
 
     // MARK: - Logic

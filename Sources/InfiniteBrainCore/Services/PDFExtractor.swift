@@ -14,10 +14,10 @@ public struct PDFExtractor: Sendable {
     }
 
     /// A page with fewer extractable characters than this triggers the OCR
-    /// fallback. 50 covers the common scanned-book case (PDFKit returns just
-    /// page numbers or empty strings) without false-firing on real text
+    /// fallback. 250 covers the common scanned-book case (PDFKit returns just
+    /// page numbers, watermarks, or simple headers) without false-firing on real text
     /// pages, which usually have 1500+ chars.
-    public static let ocrTriggerThreshold = 50
+    public static let ocrTriggerThreshold = 250
 
     public init() {}
 
@@ -29,9 +29,14 @@ public struct PDFExtractor: Sendable {
         for i in 0..<doc.pageCount {
             let pdfPage = doc.page(at: i)
             let raw = pdfPage?.string ?? ""
-            if raw.count < Self.ocrTriggerThreshold, let p = pdfPage,
-               let ocred = Self.ocrPage(p), !ocred.isEmpty {
-                out.append(.init(number: i + 1, text: ocred, usedOCR: true))
+            let visibleCount = raw.trimmingCharacters(in: .whitespacesAndNewlines).count
+            
+            if visibleCount < Self.ocrTriggerThreshold, let p = pdfPage {
+                if let ocred = Self.ocrPage(p), !ocred.isEmpty {
+                    out.append(.init(number: i + 1, text: ocred, usedOCR: true))
+                } else {
+                    out.append(.init(number: i + 1, text: raw, usedOCR: false))
+                }
             } else {
                 out.append(.init(number: i + 1, text: raw, usedOCR: false))
             }
@@ -52,8 +57,13 @@ public struct PDFExtractor: Sendable {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        // English by default; expand once we have language detection.
-        request.recognitionLanguages = ["en-US"]
+        
+        if #available(macOS 13.0, *) {
+            request.automaticallyDetectsLanguage = true
+        } else {
+            // Broad fallback for older macOS
+            request.recognitionLanguages = ["en-US", "ja-JP", "zh-Hans", "ko-KR", "es-ES", "fr-FR", "de-DE"]
+        }
 
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do { try handler.perform([request]) }

@@ -16,9 +16,9 @@ public enum IndexRebuilder {
         let store = VaultStore(vault: vault)
         let notes = try await store.allNotes()
 
-        let url = vault.sidecar.appendingPathComponent("embeddings.json")
-        try? FileManager.default.removeItem(at: url)
-        let index = EmbeddingIndex(storeURL: url)
+        let indexURL = vault.sidecar.appendingPathComponent("embeddings.bin")
+        try? FileManager.default.removeItem(at: indexURL)
+        let index = EmbeddingIndex(storeURL: indexURL)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             for note in notes {
