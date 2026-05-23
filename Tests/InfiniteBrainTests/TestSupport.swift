@@ -43,7 +43,12 @@ actor DispatchingFakeClient: LLMClient {
     private let routes: [String: String]
     init(routes: [String: String]) { self.routes = routes }
 
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         for (key, value) in routes where system.contains(Self.matchToken(forSkill: key)) {
             return value
         }
@@ -84,7 +89,12 @@ actor CapturingDispatchClient: LLMClient {
     init(routes: [String: String], capture: PromptCapture) {
         self.routes = routes; self.capture = capture
     }
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         await capture.record(system: system, user: user)
         for (key, value) in routes where system.contains(DispatchingFakeClient.matchToken(forSkill: key)) {
             return value

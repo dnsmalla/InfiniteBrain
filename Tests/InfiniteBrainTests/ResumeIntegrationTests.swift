@@ -82,7 +82,12 @@ actor ChunkAwareFakeClient: LLMClient {
         self.failBeyondChunkIndex = failBeyondChunkIndex
     }
 
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(
+        system: String,
+        user: String,
+        responseSchema: [String: Any]?,
+        onUsage: (@Sendable (LLMUsage) -> Void)?
+    ) async throws -> String {
         let token = DispatchingFakeClient.matchToken(forSkill: "atomize-text")
         if system.contains(token) {
             // Pull chunk_index from the user prompt JSON.
