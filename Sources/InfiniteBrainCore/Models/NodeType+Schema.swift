@@ -62,6 +62,10 @@ public extension EdgeType {
         case .followedBy:  return "Temporal: the target happens after."
         case .authored:    return "Links a Contact to content they produced."
         case .tagging:     return "Attaches a topical tag — target is a Concept or Pillar."
+        case .imports:     return "The new note's source file imports the target's file."
+        case .calls:       return "The new note's symbol calls the target's symbol."
+        case .references:  return "The new note references the target by name."
+        case .defines:     return "The new note's container defines the target symbol."
         }
     }
 }

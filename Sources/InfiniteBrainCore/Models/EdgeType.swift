@@ -1,6 +1,6 @@
 import Foundation
 
-/// The 10 semantic edge types.
+/// The semantic edge types. 10 knowledge-graph types plus 4 code-graph types.
 public enum EdgeType: String, Codable, CaseIterable, Sendable {
     case supports
     case contradicts
@@ -12,6 +12,12 @@ public enum EdgeType: String, Codable, CaseIterable, Sendable {
     case followedBy = "followed_by"
     case authored
     case tagging
+
+    // Code-graph relationships (Graphify integration)
+    case imports
+    case calls
+    case references
+    case defines
 }
 
 public struct Edge: Codable, Hashable, Sendable {
