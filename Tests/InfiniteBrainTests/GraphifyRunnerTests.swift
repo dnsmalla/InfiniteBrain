@@ -60,4 +60,29 @@ final class GraphifyRunnerTests: XCTestCase {
         // Guard against a typo: graphify CLI is installed as `graphifyy` (double-y).
         XCTAssertEqual(GraphifyRunner.installHint, "uv tool install graphifyy")
     }
+
+    func testExitZeroButNoOutputReportsNoOutput() async throws {
+        let launcher = MockLauncher()
+        launcher.exitCode = 0
+        launcher.writeJSONToOutPath = nil
+        let runner = GraphifyRunner(launcher: launcher, binaryURL: URL(fileURLWithPath: "/fake/graphify"))
+        let res = await runner.run(targetFolder: URL(fileURLWithPath: "/repo"))
+        XCTAssertEqual(res, .failure(.noOutput))
+    }
+
+    func testSafeTailHandlesMidCodepointTruncation() {
+        // 'é' is 0xC3 0xA9 in UTF-8. With a small maxBytes the cut may land on a
+        // continuation byte; safeTail should walk forward to a valid leading byte
+        // and still return a non-empty, decodable string.
+        let s = String(repeating: "héllo ", count: 200)
+        let data = Data(s.utf8)
+        let tail = GraphifyRunner.safeTail(data, maxBytes: 50)
+        XCTAssertFalse(tail.isEmpty, "safeTail should not bail to empty on a codepoint-boundary slice")
+        XCTAssertNotNil(tail.data(using: .utf8))
+    }
+
+    func testSafeTailUnderLimitReturnsFullString() {
+        let s = "short"
+        XCTAssertEqual(GraphifyRunner.safeTail(Data(s.utf8), maxBytes: 800), s)
+    }
 }

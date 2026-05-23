@@ -16,9 +16,13 @@ public final class GraphifyStore {
         if let b = baseDirectory {
             self.baseDirectory = b
         } else {
-            let appSupport = try! FileManager.default.url(
+            // Application Support is always creatable on a healthy macOS install.
+            // Fall back to the temporary directory if the system disagrees — it
+            // means caching is non-persistent rather than crashing the app.
+            let appSupport = (try? FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask,
-                appropriateFor: nil, create: true)
+                appropriateFor: nil, create: true))
+                ?? URL(fileURLWithPath: NSTemporaryDirectory())
             self.baseDirectory = appSupport
                 .appendingPathComponent("InfiniteBrain", isDirectory: true)
                 .appendingPathComponent("CodeGraph", isDirectory: true)

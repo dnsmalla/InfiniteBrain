@@ -1,6 +1,5 @@
 import SwiftUI
 import InfiniteBrainCore
-import UniformTypeIdentifiers
 
 @MainActor
 struct CodeGraphView: View {
@@ -41,6 +40,7 @@ struct CodeGraphView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .onAppear(perform: loadCachedIfAvailable)
+        .onDisappear { runTask?.cancel() }
     }
 
     private var toolbar: some View {
@@ -128,12 +128,14 @@ struct CodeGraphView: View {
             let result = await runner.run(targetFolder: target)
             switch result {
             case .success(let jsonURL):
+                defer { try? FileManager.default.removeItem(at: jsonURL) }
                 do {
                     let raw = try Data(contentsOf: jsonURL)
                     let parsed = try GraphifyParser.parse(data: raw)
                     try? store.save(graphJSON: raw, for: target,
                                     nodeCount: parsed.nodes.count, edgeCount: parsed.edges.count,
                                     graphifyVersion: GraphifyParser.supportedSchemaVersion)
+                    self.selected = nil
                     self.data = laidOut(parsed)
                     self.simulation = GraphSimulation(data: self.data)
                     self.status = .loaded(nodeCount: parsed.nodes.count, edgeCount: parsed.edges.count)
@@ -146,6 +148,8 @@ struct CodeGraphView: View {
                 self.status = .binaryMissing
             case .failure(.runFailed(let code, let tail)):
                 self.status = .error("graphify exited \(code): \(tail.suffix(160))")
+            case .failure(.noOutput):
+                self.status = .error("graphify produced no output.")
             case .failure(.parseFailed(let m)):
                 self.status = .error("Parse failed: \(m)")
             case .failure(.unsupportedSchema(let v)):
@@ -160,6 +164,7 @@ struct CodeGraphView: View {
         guard let target = targetFolder,
               let raw = store.loadGraphJSON(for: target),
               let parsed = try? GraphifyParser.parse(data: raw) else { return }
+        self.selected = nil
         self.data = laidOut(parsed)
         self.simulation = GraphSimulation(data: self.data)
         if let meta = store.lastRun(for: target) {

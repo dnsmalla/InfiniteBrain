@@ -34,7 +34,7 @@ public struct GraphCanvas: View {
     }
 
     public var body: some View {
-        GeometryReader { geo in
+        GeometryReader { _ in
             TimelineView(.animation) { _ in
                 Canvas { ctx, size in
                     if isSimulating {
@@ -91,6 +91,9 @@ public struct GraphCanvas: View {
                             .onEnded { _ in lastOffset = .zero }
                     )
                 )
+                // Double-tap must win over single-tap for "open file" to be
+                // reachable. `.exclusively(before:)` waits long enough to
+                // disambiguate; single-tap still fires on a normal click.
                 .gesture(
                     SpatialTapGesture(count: 2)
                         .onEnded { event in
@@ -98,14 +101,14 @@ public struct GraphCanvas: View {
                                                 y: (event.location.y - offset.height) / scale)
                             if let hit = hitTest(world) { onNodeOpen?(hit) }
                         }
-                )
-                .gesture(
-                    SpatialTapGesture()
-                        .onEnded { event in
-                            let world = CGPoint(x: (event.location.x - offset.width) / scale,
-                                                y: (event.location.y - offset.height) / scale)
-                            selected = hitTest(world)
-                        }
+                        .exclusively(before:
+                            SpatialTapGesture()
+                                .onEnded { event in
+                                    let world = CGPoint(x: (event.location.x - offset.width) / scale,
+                                                        y: (event.location.y - offset.height) / scale)
+                                    selected = hitTest(world)
+                                }
+                        )
                 )
             }
         }

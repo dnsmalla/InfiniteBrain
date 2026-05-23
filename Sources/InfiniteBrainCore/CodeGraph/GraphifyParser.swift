@@ -24,8 +24,9 @@ public enum GraphifyParser {
     }
 
     public static func parse(data: Data) throws -> GraphData {
-        // Check schema version BEFORE general decode, so version-only payloads with
-        // non-matching version surface unsupportedSchema, not parseFailed.
+        // Check schema version BEFORE the full decode so a payload missing
+        // required fields-but-with-an-unsupported-version surfaces the right
+        // error (unsupportedSchema) rather than a generic parseFailed.
         struct VersionProbe: Decodable { let version: String }
         if let probe = try? JSONDecoder().decode(VersionProbe.self, from: data),
            probe.version != supportedSchemaVersion {
@@ -38,9 +39,9 @@ public enum GraphifyParser {
         } catch {
             throw GraphifyError.parseFailed(message: String(describing: error))
         }
-        guard raw.version == supportedSchemaVersion else {
-            throw GraphifyError.unsupportedSchema(version: raw.version)
-        }
+        // If we got here the version probe matched (or the JSON had no `version`
+        // field at all, in which case RawGraph's required field would have
+        // already thrown parseFailed above). No second guard needed.
 
         let nodes: [GraphNode] = raw.nodes.map { rn in
             let (type, originalKind) = mapNodeKind(rn.kind)
