@@ -43,7 +43,7 @@ public actor GlobalRateGate: LLMGate {
     }
 
     /// Executes the given work within the rate gate.
-    public func withSlot<T>(@_inheritActorContext _ work: () async throws -> T) async rethrows -> T {
+    public func withSlot<T>(@_inheritActorContext _ work: @Sendable () async throws -> T) async rethrows -> T {
         await acquire()
         defer { release() }
         return try await work()

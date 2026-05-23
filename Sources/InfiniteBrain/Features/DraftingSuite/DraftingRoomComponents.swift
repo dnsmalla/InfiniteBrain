@@ -153,7 +153,7 @@ struct DraftEditor: View {
                             }
                             
                             if isPreviewMode {
-                                MarkdownPreview(markdown: section.content)
+                                MarkdownPreview(markdown: section.content.formattingCitations())
                                     .padding(32)
                                     .frame(maxWidth: .infinity, minHeight: 800, alignment: .topLeading)
                                     .background(AppPalette.textBackground, in: RoundedRectangle(cornerRadius: 16))
@@ -249,5 +249,30 @@ extension View {
             placeholder().opacity(shouldShow ? 1 : 0)
             self
         }
+    }
+}
+
+extension String {
+    /// Sweeps the generated text for raw [[ID]] citation tokens and transforms them
+    /// into elegant, hoverable HTML superscript badges for the rendered Markdown Preview.
+    func formattingCitations() -> String {
+        guard let regex = try? NSRegularExpression(pattern: "\\[\\[([a-zA-Z0-9_-]+)\\]\\]", options: []) else { return self }
+        let nsString = self as NSString
+        let results = regex.matches(in: self, options: [], range: NSRange(location: 0, length: nsString.length))
+        
+        var uniqueIds: [String] = []
+        for result in results {
+            if result.numberOfRanges > 1 {
+                let id = nsString.substring(with: result.range(at: 1))
+                if !uniqueIds.contains(id) { uniqueIds.append(id) }
+            }
+        }
+        
+        var output = self
+        for (index, id) in uniqueIds.enumerated() {
+            let html = "<sup style=\"display: inline-flex; align-items: center; justify-content: center; background-color: rgba(88,86,214,0.15); color: #5856D6; padding: 2px 6px; border-radius: 6px; font-size: 0.85em; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, sans-serif; cursor: help; line-height: 1; margin: 0 2px; text-decoration: none; border: 1px solid rgba(88,86,214,0.3);\" title=\"\(id)\">[\(index + 1)]</sup>"
+            output = output.replacingOccurrences(of: "[[\(id)]]", with: html)
+        }
+        return output
     }
 }

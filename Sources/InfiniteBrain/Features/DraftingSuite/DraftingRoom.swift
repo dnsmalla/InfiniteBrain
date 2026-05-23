@@ -54,6 +54,15 @@ struct DraftingRoom: View {
         }
         .onAppear {
             if vm.session != nil { showingResumeView = true }
+            Task { await vm.loadRecentSessions(settings: settings) }
+        }
+        .onChange(of: vm.session) { _, _ in
+            Task { await vm.saveSession(settings: settings) }
+        }
+        .onChange(of: showingResumeView) { _, isShowing in
+            if isShowing {
+                Task { await vm.loadRecentSessions(settings: settings) }
+            }
         }
     }
     

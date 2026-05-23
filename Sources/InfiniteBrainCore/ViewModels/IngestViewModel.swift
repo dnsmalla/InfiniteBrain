@@ -87,7 +87,6 @@ public final class IngestViewModel: ObservableObject {
     public func revertIngest(sourceURL: URL, settings: AppSettings) async {
         guard let vaultURL = settings.vaultPath else { return }
         let vault = Vault(root: vaultURL)
-        let store = VaultStore(vault: vault)
         
         let orchestrator = UnifiedIngestionService.makeOrchestrator(
             vault: vault, 

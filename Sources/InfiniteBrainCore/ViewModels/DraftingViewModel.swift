@@ -16,6 +16,8 @@ public final class DraftingViewModel: ObservableObject {
     @Published public var ingestionStatus: String? = nil
     @Published public var isIngesting: Bool = false
     @Published public var recentSessions: [DraftingSession] = []
+    /// Number of files currently being indexed in the background.
+    @Published public var backgroundIngestionCount: Int = 0
     
     public let templates = ["Scientific Paper", "Executive Summary", "Blog Post", "Project Proposal"]
     
@@ -188,54 +190,85 @@ public final class DraftingViewModel: ObservableObject {
         }
     }
     
+    /// Registers source references instantly and defers heavy ingestion to the background.
+    /// Files already inside the vault are linked in-place — never double-copied.
     public func importFiles(urls: [URL], settings: AppSettings) async {
         guard let vaultURL = settings.vaultPath else { return }
         let vault = Vault(root: vaultURL)
-        
-        isIngesting = true
-        error = nil
-        
-        do {
-            let apiKey = (try? settings.apiKey()) ?? nil
-            let client = try LLMClientFactory.make(provider: settings.provider, apiKey: apiKey, gate: GlobalRateGate.shared)
-            
-            let orchestrator = UnifiedIngestionService.makeOrchestrator(
-                vault: vault, 
-                client: client, 
-                concurrency: settings.concurrency,
-                onProgress: { [weak self] msg in 
-                    Task { @MainActor in self?.ingestionStatus = msg }
-                },
-                onUsage: { _ in }
-            )
-            
-            let allFiles = UnifiedIngestionService.resolveFiles(urls: urls)
-            
-            for url in allFiles {
-                let targetURL = vault.root.appendingPathComponent("sources", isDirectory: true).appendingPathComponent(url.lastPathComponent)
-                try? FileManager.default.createDirectory(at: targetURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                if !FileManager.default.fileExists(atPath: targetURL.path) {
-                    try? FileManager.default.copyItem(at: url, to: targetURL)
-                }
-                
-                _ = try await orchestrator.ingest(file: targetURL, into: vault)
-                
-                let fileName = url.deletingPathExtension().lastPathComponent
-                await MainActor.run {
-                    self.toggleGlobalCitation(url.lastPathComponent)
-                    if self.newTopic.isEmpty { self.newTopic = fileName }
+
+        // ── Step 1: INSTANT REGISTRATION ──────────────────────────────────
+        // Register the human-readable folder/file labels immediately so the
+        // user sees the result right away with zero perceived wait time.
+        let displayLabels: [String] = urls.map { $0.lastPathComponent }
+        let humanTopic = urls.first.map { $0.deletingPathExtension().lastPathComponent } ?? ""
+
+        for label in displayLabels where !globalSelectedCitations.contains(label) {
+            globalSelectedCitations.append(label)
+        }
+        if newTopic.isEmpty { newTopic = humanTopic }
+
+        // ── Step 2: BACKGROUND INDEXING ───────────────────────────────────
+        // Resolve individual files, copy any that live outside the vault,
+        // then index them one-by-one without blocking this actor.
+        let allFiles = UnifiedIngestionService.resolveFiles(urls: urls)
+        let vaultRoot = vault.root
+        backgroundIngestionCount += allFiles.count
+        ingestionStatus = "Indexing \(allFiles.count) file(s) in background…"
+
+        Task.detached(priority: .background) { [weak self] in
+            guard let self else { return }
+
+            do {
+                let apiKey   = (try? settings.apiKey()) ?? nil
+                let client   = try LLMClientFactory.make(
+                    provider: settings.provider, apiKey: apiKey, gate: GlobalRateGate.shared
+                )
+                let orchestrator = UnifiedIngestionService.makeOrchestrator(
+                    vault: vault, client: client, concurrency: settings.concurrency,
+                    onProgress: { _ in }, onUsage: { _ in }
+                )
+                let fm = FileManager.default
+                let sourcesDir = vaultRoot.appendingPathComponent("sources", isDirectory: true)
+                try? fm.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+
+                for fileURL in allFiles {
+                    // If file is already inside the vault, use it in-place.
+                    let isInsideVault = fileURL.path.hasPrefix(vaultRoot.path)
+                    let targetURL: URL
+                    if isInsideVault {
+                        targetURL = fileURL
+                    } else {
+                        targetURL = sourcesDir.appendingPathComponent(fileURL.lastPathComponent)
+                        if !fm.fileExists(atPath: targetURL.path) {
+                            try? fm.copyItem(at: fileURL, to: targetURL)
+                        }
+                    }
+
+                    _ = try? await orchestrator.ingest(file: targetURL, into: vault)
+
+                    await MainActor.run {
+                        self.backgroundIngestionCount = max(0, self.backgroundIngestionCount - 1)
+                        if self.backgroundIngestionCount > 0 {
+                            self.ingestionStatus = "Indexing: \(self.backgroundIngestionCount) file(s) remaining…"
+                        } else {
+                            self.ingestionStatus = nil
+                        }
+                    }
                 }
             }
-            
-            await MainActor.run { self.ingestionStatus = "Import complete!" }
-            try? await Task.sleep(nanoseconds: 2 * 1_000_000_000)
-            await MainActor.run { self.ingestionStatus = nil }
-            
-        } catch {
-            await MainActor.run { self.error = "Import failed: \(error.localizedDescription)" }
         }
-        
-        isIngesting = false
+    }
+
+    /// Adds all current search results to the global citation list.
+    public func addSearchResultsToCitations() {
+        for note in searchResults {
+            let label = note.title.isEmpty ? note.id : note.title
+            if !globalSelectedCitations.contains(label) {
+                globalSelectedCitations.append(label)
+            }
+        }
+        searchResults = []
+        noteSearchQuery = ""
     }
 
     private func makeService(settings: AppSettings) async throws -> DraftingService {
@@ -284,6 +317,21 @@ public final class DraftingViewModel: ObservableObject {
         } catch {
             print("Failed to save session: \(error)")
         }
+    }
+
+    /// Permanently removes a draft from both the in-memory list and the vault .drafts folder.
+    public func deleteSession(_ target: DraftingSession, settings: AppSettings) {
+        // Remove from memory
+        recentSessions.removeAll { $0.topic == target.topic }
+        // If this is the active session, clear it
+        if session?.topic == target.topic { session = nil }
+        // Delete from disk
+        guard let vaultURL = settings.vaultPath else { return }
+        let fileName = target.topic.replacingOccurrences(of: "/", with: "-")
+        let fileURL = vaultURL
+            .appendingPathComponent(".drafts", isDirectory: true)
+            .appendingPathComponent("\(fileName).json")
+        try? FileManager.default.removeItem(at: fileURL)
     }
     
     public func loadRecentSessions(settings: AppSettings) async {

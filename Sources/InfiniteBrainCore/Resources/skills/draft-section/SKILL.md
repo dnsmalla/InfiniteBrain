@@ -25,10 +25,10 @@ You are provided with partial content from `previous_sections` to ensure continu
 
 # Hard rules
 
-1. **Citations**: You MUST use inline citations `[[<id>]]`. Claim without evidence is unacceptable.
-2. **Focus**: Only write the body content for this section. Do not include the header in the output.
-3. **Tone**: Match the professional tone required for the `topic`.
-4. **Accuracy**: Only use facts from the `notes`.
+1. **Focus**: Only write the body content for this section. Do not include the header in the output.
+2. **Citations (If Notes Provided)**: If `notes` are provided, you MUST use them and include inline citations like `[[<id>]]`.
+3. **General Synthesis (If No Notes)**: If the `notes` array is empty, synthesize the requested content using your general knowledge while following the user's `instruction`. No citations are needed in this case.
+4. **Tone**: Match the professional tone required for the `topic`.
 
 # Output
 
