@@ -90,7 +90,7 @@ struct ContentView: View {
                         case .ingest: IngestView()
                         case .vault: VaultBrowser()
                         case .graph: GraphView()
-                        case .codeGraph: Text("Code Graph — initializing…").foregroundStyle(.secondary)
+                        case .codeGraph: CodeGraphView()
                         case .query: QueryView()
                         case .drafting: DraftingRoom()
                         case .settings: SettingsView()
