@@ -1,0 +1,8 @@
+{"version":"1",
+ "nodes":[
+   {"id":"a","kind":"unicorn","name":"u","path":"/x.swift"},
+   {"id":"b","kind":"markdown_section","name":"Intro","path":"/README.md"}
+ ],
+ "edges":[
+   {"from":"a","to":"b","kind":"teleports"}
+ ]}
