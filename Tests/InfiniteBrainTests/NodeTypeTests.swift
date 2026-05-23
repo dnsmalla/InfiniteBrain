@@ -6,8 +6,8 @@ final class NodeTypeTests: XCTestCase {
         XCTAssertEqual(NodeType.allCases.count, 20)
     }
 
-    func testAllTenEdgeTypesPresent() {
-        XCTAssertEqual(EdgeType.allCases.count, 10)
+    func testAllFourteenEdgeTypesPresent() {
+        XCTAssertEqual(EdgeType.allCases.count, 14)
     }
 
     func testCodeGraphNodeTypeConstants() {
