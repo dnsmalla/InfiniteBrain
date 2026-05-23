@@ -9,8 +9,16 @@ public struct GraphNode: Equatable, Sendable, Identifiable {
     public let type: NodeType
     public let summary: String
     public var position: CGPoint
+    public let metadata: [String: String]?
+
     public init(id: String, title: String, type: NodeType, summary: String, position: CGPoint) {
-        self.id = id; self.title = title; self.type = type; self.summary = summary; self.position = position
+        self.id = id; self.title = title; self.type = type; self.summary = summary
+        self.position = position; self.metadata = nil
+    }
+
+    public init(id: String, title: String, type: NodeType, summary: String, position: CGPoint, metadata: [String: String]?) {
+        self.id = id; self.title = title; self.type = type; self.summary = summary
+        self.position = position; self.metadata = metadata
     }
 }
 

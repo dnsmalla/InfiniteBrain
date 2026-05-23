@@ -28,8 +28,17 @@ public struct NodeType: RawRepresentable, Codable, Hashable, Sendable, Expressib
     public static let contact: NodeType = "contact"
     public static let reference: NodeType = "reference"
     public static let custom: NodeType = "custom"
-    
+
+    // Code-graph types (Graphify integration)
+    public static let codeFile: NodeType = "code_file"
+    public static let codeSymbol: NodeType = "code_symbol"
+    public static let codeModule: NodeType = "code_module"
+    public static let docPage: NodeType = "doc_page"
+
     public static var allCases: [NodeType] {
-        [.pillar, .decision, .concept, .question, .playbook, .task, .event, .pattern, .hypothesis, .fact, .source, .bookmark, .note, .contact, .reference, .custom]
+        [.pillar, .decision, .concept, .question, .playbook, .task, .event,
+         .pattern, .hypothesis, .fact, .source, .bookmark, .note, .contact,
+         .reference, .custom,
+         .codeFile, .codeSymbol, .codeModule, .docPage]
     }
 }

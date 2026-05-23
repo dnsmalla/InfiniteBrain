@@ -50,25 +50,27 @@ struct ContentView: View {
     @State private var selectedTab: Tab? = .ingest
     
     enum Tab: String, CaseIterable, Identifiable {
-        case ingest, vault, graph, query, drafting, settings
+        case ingest, vault, graph, codeGraph, query, drafting, settings
         var id: String { self.rawValue }
-        
+
         var label: String {
             switch self {
             case .ingest: return "Ingest"
             case .vault: return "Vault"
             case .graph: return "Knowledge Graph"
+            case .codeGraph: return "Code Graph"
             case .query: return "Query"
             case .drafting: return "Drafting Room"
             case .settings: return "Settings"
             }
         }
-        
+
         var icon: String {
             switch self {
             case .ingest: return "tray.and.arrow.down.fill"
             case .vault: return "books.vertical.fill"
             case .graph: return "circle.hexagongrid.fill"
+            case .codeGraph: return "point.3.connected.trianglepath.dotted"
             case .query: return "sparkle.magnifyingglass"
             case .drafting: return "pencil.and.scribble"
             case .settings: return "gearshape.fill"
@@ -88,6 +90,7 @@ struct ContentView: View {
                         case .ingest: IngestView()
                         case .vault: VaultBrowser()
                         case .graph: GraphView()
+                        case .codeGraph: CodeGraphView()
                         case .query: QueryView()
                         case .drafting: DraftingRoom()
                         case .settings: SettingsView()

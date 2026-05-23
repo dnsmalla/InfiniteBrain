@@ -1,0 +1,12 @@
+{
+  "version": "1",
+  "nodes": [
+    {"id": "n1", "kind": "file",     "name": "App.swift",   "path": "/repo/App.swift"},
+    {"id": "n2", "kind": "class",    "name": "App",         "path": "/repo/App.swift", "line": 10},
+    {"id": "n3", "kind": "function", "name": "main",        "path": "/repo/App.swift", "line": 30}
+  ],
+  "edges": [
+    {"from": "n2", "to": "n3", "kind": "defines"},
+    {"from": "n1", "to": "n2", "kind": "defines"}
+  ]
+}

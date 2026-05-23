@@ -40,7 +40,10 @@ let package = Package(
         .testTarget(
             name: "InfiniteBrainTests",
             dependencies: ["InfiniteBrainCore"],
-            path: "Tests/InfiniteBrainTests"
+            path: "Tests/InfiniteBrainTests",
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )
