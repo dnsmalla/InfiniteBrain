@@ -248,6 +248,7 @@ running `xcrun notarytool submit`.
 - ✅ macOS Keychain for the API key, vault path persisted in UserDefaults
 - ⏳ Crash-resume checkpointing
 - ⏳ Graph view
+- ✅ Code Graph — visualize a repository's structure (classes, calls, imports) via the [Graphify](https://github.com/safishamsi/graphify) CLI. See [docs/user-guide/code-graph.md](docs/user-guide/code-graph.md).
 - ⏳ Code-signed `.dmg`
 
 32 tests pass. Both packages build clean. CI runs on every push.
