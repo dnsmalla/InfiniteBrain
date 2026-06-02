@@ -268,7 +268,9 @@ struct CodeGraphView: View {
 
     /// Clickable filter legend — tap a kind to show only those nodes; tap again to clear.
     private var colorLegend: some View {
-        let presentKinds = Array(Set(fullData.nodes.map(\.kind)))
+        // Only show filterable code kinds (not note/docPage nodes).
+        let filterableKinds: Set<CGNodeKind> = [.file, .module, .classType, .function]
+        let presentKinds = Array(Set(fullData.nodes.map(\.kind)).intersection(filterableKinds))
             .sorted { $0.rawValue < $1.rawValue }
         return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -535,16 +537,22 @@ struct CodeGraphView: View {
     }
 
     private func recomputeDisplayData() {
-        // Canvas shows only code structure — generated notes live in the panel.
-        let showInCanvas: Set<CGNodeKind> = showSymbols
-            ? [.file, .module, .classType, .function]
-            : [.file, .module]
-        // Exclude note nodes (they have source_code_file metadata).
-        // If a kind filter is active, further restrict to that kind only.
-        let kept    = fullData.nodes.filter {
-            showInCanvas.contains($0.kind)
-            && $0.metadata["source_code_file"] == nil
-            && (filterKind == nil || $0.kind == filterKind)
+        // All code-structural kinds (excludes note nodes which have source_code_file).
+        let allCodeKinds: Set<CGNodeKind> = [.file, .module, .classType, .function]
+        let symbolKinds:  Set<CGNodeKind> = [.classType, .function]
+
+        let kept: [CGNode]
+        if let kind = filterKind {
+            // Kind filter active: show ONLY that kind, ignoring showSymbols.
+            kept = fullData.nodes.filter {
+                $0.kind == kind && $0.metadata["source_code_file"] == nil
+            }
+        } else {
+            // No filter: respect showSymbols toggle.
+            let showInCanvas = showSymbols ? allCodeKinds : allCodeKinds.subtracting(symbolKinds)
+            kept = fullData.nodes.filter {
+                showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
+            }
         }
         let keptIds = Set(kept.map(\.id))
         let edges   = fullData.edges.filter {
