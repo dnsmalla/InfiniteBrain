@@ -1,10 +1,11 @@
 import SwiftUI
 import InfiniteBrainCore
 
-/// Legacy accessor for the node-type colour palette. The full Schema view
-/// retired into the Help window in 0.24; this shim stays so HelpView can
-/// keep its existing `SchemaView.color(for:)` call without churn. New
-/// code should use `NodePalette.color(for:)` directly.
+/// Shim kept so HelpView's existing `SchemaView.color(for:)` call compiles
+/// without churn. Delegates to `CGPalette` via the shared `CGNodeKind.from`
+/// converter — no separate `NodePalette` needed.
 enum SchemaView {
-    static func color(for type: NodeType) -> Color { NodePalette.color(for: type) }
+    static func color(for type: NodeType) -> Color {
+        CGPalette.color(for: CGNodeKind.from(type.rawValue))
+    }
 }

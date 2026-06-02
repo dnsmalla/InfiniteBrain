@@ -95,7 +95,7 @@ struct QueryView: View {
                                     let note = vm.citedNotes[id]
                                     TagChip(
                                         title: note?.title ?? id,
-                                        color: NodePalette.color(for: note?.type ?? .concept),
+                                        color: CGPalette.color(for: CGNodeKind.from((note?.type ?? .concept).rawValue)),
                                         id: id
                                     )
                                 }

@@ -1,52 +1,45 @@
+// GraphLayoutTests now covers CodeGraphLayout — the unified layout used by
+// both the Code Graph and the Knowledge Graph. GraphLayout (the old
+// Note-based variant) was removed when GraphView migrated to CGData.
 import XCTest
 @testable import InfiniteBrainCore
 
 final class GraphLayoutTests: XCTestCase {
+
     func testEmptyInputProducesEmptyGraph() {
-        let g = GraphLayout.compute(notes: [], canvasSize: .init(width: 800, height: 600))
-        XCTAssertTrue(g.nodes.isEmpty)
-        XCTAssertTrue(g.edges.isEmpty)
+        let result = CodeGraphLayout.compute(.empty, canvasSize: CGSize(width: 800, height: 600))
+        XCTAssertTrue(result.nodes.isEmpty)
+        XCTAssertTrue(result.edges.isEmpty)
     }
 
-    func testNodeCountMatchesNoteCountAndPositionsAreInsideCanvas() {
-        let notes = (0..<20).map { i in
-            Note(
-                id: "01J\(String(format: "%023d", i))",
-                type: NodeType.allCases[i % NodeType.allCases.count],
-                title: "n\(i)", summary: "s\(i)", body: "b",
-                edges: [], sources: [], contentHash: "h",
-                version: 1, createdAt: Date(), updatedAt: Date()
-            )
+    func testNodeCountPreservedAndPositionsInsideCanvas() {
+        let nodes = (0..<20).map { i in
+            CGNode(id: "\(i)", title: "N\(i)",
+                   kind: i % 2 == 0 ? .file : .noteConcept)
         }
-        let size = CGSize(width: 800, height: 600)
-        let g = GraphLayout.compute(notes: notes, canvasSize: size)
-        XCTAssertEqual(g.nodes.count, 20)
-        for n in g.nodes {
+        let canvas = CGSize(width: 800, height: 600)
+        let result = CodeGraphLayout.compute(CGData(nodes: nodes, edges: []),
+                                             canvasSize: canvas)
+        XCTAssertEqual(result.nodes.count, 20)
+        for n in result.nodes {
             XCTAssertGreaterThan(n.position.x, 0)
-            XCTAssertLessThan(n.position.x, size.width)
+            XCTAssertLessThan(n.position.x, canvas.width)
             XCTAssertGreaterThan(n.position.y, 0)
-            XCTAssertLessThan(n.position.y, size.height)
+            XCTAssertLessThan(n.position.y, canvas.height)
         }
     }
 
-    func testEdgesAreOnlyEmittedWhenBothEndpointsArePresent() {
-        let factId = "01JFACT0000000000000000001"
-        let decId  = "01JDEC00000000000000000002"
-        let notes = [
-            Note(id: factId, type: .fact, title: "f", summary: "s", body: "b",
-                 edges: [], sources: [], contentHash: "h", version: 1,
-                 createdAt: Date(), updatedAt: Date()),
-            Note(id: decId, type: .decision, title: "d", summary: "s", body: "b",
-                 edges: [
-                    Edge(type: .supports, target: factId, evidence: nil),
-                    Edge(type: .supports, target: "MISSING", evidence: nil),  // dangling
-                 ],
-                 sources: [], contentHash: "h", version: 1,
-                 createdAt: Date(), updatedAt: Date()),
+    func testDanglingEdgesDropped() {
+        let a = CGNode(id: "a", title: "A", kind: .file)
+        let b = CGNode(id: "b", title: "B", kind: .file)
+        let edges = [
+            CGEdge(fromId: "a", toId: "b",       kind: .imports),   // valid
+            CGEdge(fromId: "a", toId: "MISSING",  kind: .imports),  // dangling
         ]
-        let g = GraphLayout.compute(notes: notes, canvasSize: .init(width: 400, height: 400))
-        XCTAssertEqual(g.edges.count, 1, "must drop the dangling edge")
-        XCTAssertEqual(g.edges.first?.fromId, decId)
-        XCTAssertEqual(g.edges.first?.toId, factId)
+        let result = CodeGraphLayout.compute(CGData(nodes: [a, b], edges: edges),
+                                             canvasSize: CGSize(width: 400, height: 400))
+        XCTAssertEqual(result.edges.count, 1, "dangling edge must be dropped")
+        XCTAssertEqual(result.edges.first?.fromId, "a")
+        XCTAssertEqual(result.edges.first?.toId,   "b")
     }
 }

@@ -1,0 +1,5405 @@
+{
+  "files" : [
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 49,
+      "name" : "Package.swift",
+      "path" : "Package.swift",
+      "role" : "Module",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 22,
+      "name" : "Package.swift",
+      "path" : "SharedLLMKit\/Package.swift",
+      "role" : "Module",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 45,
+          "name" : "complete"
+        },
+        {
+          "line" : 56,
+          "name" : "performComplete"
+        },
+        {
+          "line" : 110,
+          "name" : "extractUsage"
+        },
+        {
+          "line" : 121,
+          "name" : "extractText"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 116,
+      "name" : "AnthropicClient.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/AnthropicClient.swift",
+      "role" : "Client",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "AnthropicClientError"
+        },
+        {
+          "line" : 8,
+          "name" : "AnthropicClient"
+        },
+        {
+          "line" : 9,
+          "name" : "RetryPolicy"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "merge"
+        },
+        {
+          "line" : 26,
+          "name" : "complete"
+        },
+        {
+          "line" : 42,
+          "name" : "arguments"
+        },
+        {
+          "line" : 61,
+          "name" : "complete"
+        },
+        {
+          "line" : 88,
+          "name" : "arguments"
+        },
+        {
+          "line" : 120,
+          "name" : "complete"
+        },
+        {
+          "line" : 135,
+          "name" : "arguments"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 122,
+      "name" : "CLIClients.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/CLIClients.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "PromptMerge"
+        },
+        {
+          "line" : 14,
+          "name" : "ClaudeCLIClient"
+        },
+        {
+          "line" : 49,
+          "name" : "CodexCLIClient"
+        },
+        {
+          "line" : 95,
+          "name" : "CursorCLIClient"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 15,
+          "name" : "find"
+        },
+        {
+          "line" : 31,
+          "name" : "which"
+        },
+        {
+          "line" : 52,
+          "name" : "run"
+        },
+        {
+          "line" : 102,
+          "name" : "defaultEnvironment"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 99,
+      "name" : "CLIProcessRunner.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/CLIProcessRunner.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "CLIClientError"
+        },
+        {
+          "line" : 14,
+          "name" : "CLILocator"
+        },
+        {
+          "line" : 49,
+          "name" : "CLIProcessRunner"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 12,
+          "name" : "complete"
+        },
+        {
+          "line" : 21,
+          "name" : "complete"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 25,
+      "name" : "LLMClient.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/LLMClient.swift",
+      "role" : "Client",
+      "types" : [
+        {
+          "line" : 1,
+          "name" : "LLMUsage"
+        },
+        {
+          "line" : 11,
+          "name" : "LLMClient"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 4,
+          "name" : "withSlot"
+        },
+        {
+          "line" : 10,
+          "name" : "withSlot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 11,
+      "name" : "LLMGate.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/LLMGate.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "LLMGate"
+        },
+        {
+          "line" : 8,
+          "name" : "NoOpGate"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 37,
+          "name" : "make"
+        },
+        {
+          "line" : 50,
+          "name" : "isAvailable"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 51,
+      "name" : "LLMProvider.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Client\/LLMProvider.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "LLMProviderKind"
+        },
+        {
+          "line" : 32,
+          "name" : "LLMClientFactory"
+        },
+        {
+          "line" : 33,
+          "name" : "FactoryError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 20,
+          "name" : "record"
+        },
+        {
+          "line" : 26,
+          "name" : "remove"
+        },
+        {
+          "line" : 33,
+          "name" : "nearest"
+        },
+        {
+          "line" : 55,
+          "name" : "load"
+        },
+        {
+          "line" : 70,
+          "name" : "read"
+        },
+        {
+          "line" : 116,
+          "name" : "recalculateMagnitudes"
+        },
+        {
+          "line" : 123,
+          "name" : "calculateMagnitude"
+        },
+        {
+          "line" : 129,
+          "name" : "flush"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 131,
+      "name" : "EmbeddingIndex.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Embeddings\/EmbeddingIndex.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "Hit"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 4,
+          "name" : "embed"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 4,
+      "name" : "EmbeddingProvider.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Embeddings\/EmbeddingProvider.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "EmbeddingProvider"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 19,
+          "name" : "embed"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 32,
+      "name" : "NLEmbeddingProvider.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Embeddings\/NLEmbeddingProvider.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "NLEmbeddingProvider"
+        },
+        {
+          "line" : 33,
+          "name" : "EmbeddingError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 17,
+          "name" : "validate"
+        },
+        {
+          "line" : 28,
+          "name" : "matches"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 46,
+      "name" : "SchemaValidator.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/Schema\/SchemaValidator.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "SchemaValidationError"
+        },
+        {
+          "line" : 14,
+          "name" : "SchemaValidator"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 6,
+      "name" : "SharedLLMKit.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/SharedLLMKit.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "SharedLLMKit"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 32,
+          "name" : "parse"
+        },
+        {
+          "line" : 39,
+          "name" : "parse"
+        },
+        {
+          "line" : 65,
+          "name" : "parseFrontmatter"
+        },
+        {
+          "line" : 134,
+          "name" : "stripComment"
+        },
+        {
+          "line" : 145,
+          "name" : "unquote"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 137,
+      "name" : "Skill.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/SkillRunner\/Skill.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "SkillParseError"
+        },
+        {
+          "line" : 12,
+          "name" : "Skill"
+        },
+        {
+          "line" : 13,
+          "name" : "Manifest"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 22,
+          "name" : "run"
+        },
+        {
+          "line" : 62,
+          "name" : "loadSkill"
+        },
+        {
+          "line" : 70,
+          "name" : "buildSystemPrompt"
+        },
+        {
+          "line" : 79,
+          "name" : "buildUserPrompt"
+        },
+        {
+          "line" : 87,
+          "name" : "detectHedging"
+        },
+        {
+          "line" : 106,
+          "name" : "walkStrings"
+        },
+        {
+          "line" : 126,
+          "name" : "applyBudget"
+        },
+        {
+          "line" : 136,
+          "name" : "extractJSON"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 151,
+      "name" : "SkillRunner.swift",
+      "path" : "SharedLLMKit\/Sources\/SharedLLMKit\/SkillRunner\/SkillRunner.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "SkillRunnerError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "tearDown"
+        },
+        {
+          "line" : 10,
+          "name" : "testSendsCorrectRequestAndParsesContent"
+        },
+        {
+          "line" : 41,
+          "name" : "testThrowsOnNon200"
+        },
+        {
+          "line" : 65,
+          "name" : "reset"
+        },
+        {
+          "line" : 67,
+          "name" : "session"
+        },
+        {
+          "line" : 73,
+          "name" : "canInit"
+        },
+        {
+          "line" : 74,
+          "name" : "canonicalRequest"
+        },
+        {
+          "line" : 76,
+          "name" : "startLoading"
+        },
+        {
+          "line" : 92,
+          "name" : "stopLoading"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 100,
+      "name" : "AnthropicClientTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/AnthropicClientTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "AnthropicClientTests"
+        },
+        {
+          "line" : 62,
+          "name" : "StubURLProtocol"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "tearDown"
+        },
+        {
+          "line" : 7,
+          "name" : "testRetriesOn429ThenSucceeds"
+        },
+        {
+          "line" : 25,
+          "name" : "testGivesUpAfterMaxAttempts"
+        },
+        {
+          "line" : 37,
+          "name" : "testDoesNotRetryOn4xxOtherThan429"
+        },
+        {
+          "line" : 58,
+          "name" : "bump"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 55,
+      "name" : "AnthropicRetryTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/AnthropicRetryTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "AnthropicRetryTests"
+        },
+        {
+          "line" : 55,
+          "name" : "AttemptCounter"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "testEveryBundledSkillParses"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 36,
+      "name" : "BundledSkillsTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/BundledSkillsTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "BundledSkillsTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 7,
+          "name" : "testClaudeArgumentsHaveExpectedFlagsInOrder"
+        },
+        {
+          "line" : 12,
+          "name" : "testCodexArgumentsCarryOutputFileAndReadOnlySandbox"
+        },
+        {
+          "line" : 17,
+          "name" : "testCursorArgumentsUseAgentMode"
+        },
+        {
+          "line" : 22,
+          "name" : "testProviderKindDisplayNamesAndCases"
+        },
+        {
+          "line" : 31,
+          "name" : "testPromptMergeIncludesSystemAndUser"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 31,
+      "name" : "CLIClientArgumentTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/CLIClientArgumentTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "CLIClientArgumentTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testNearestReturnsTopKByCosineSimilarity"
+        },
+        {
+          "line" : 23,
+          "name" : "testEmptyIndexReturnsNoResults"
+        },
+        {
+          "line" : 31,
+          "name" : "testPersistenceAcrossInstances"
+        },
+        {
+          "line" : 48,
+          "name" : "testRecordIsIdempotentByIdAndOverwrites"
+        },
+        {
+          "line" : 59,
+          "name" : "tempFile"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 54,
+      "name" : "EmbeddingIndexTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/EmbeddingIndexTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "EmbeddingIndexTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 7,
+          "name" : "testAcceptsValidPayload"
+        },
+        {
+          "line" : 21,
+          "name" : "testRejectsMissingRequiredField"
+        },
+        {
+          "line" : 32,
+          "name" : "testRejectsTypeMismatch"
+        },
+        {
+          "line" : 44,
+          "name" : "testEnumAcceptsAnyString"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 46,
+      "name" : "SchemaValidatorTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SchemaValidatorTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "SchemaValidatorTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testVersion"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 7,
+      "name" : "SharedLLMKitTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SharedLLMKitTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "SharedLLMKitTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testParsesFrontmatterAndBody"
+        },
+        {
+          "line" : 39,
+          "name" : "testRejectsFileMissingFrontmatter"
+        },
+        {
+          "line" : 50,
+          "name" : "write"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 50,
+      "name" : "SkillParseTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SkillParseTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "SkillParseTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "testTruncatesOversizedUserPrompt"
+        },
+        {
+          "line" : 36,
+          "name" : "testNoCapMeansNoTruncation"
+        },
+        {
+          "line" : 63,
+          "name" : "makeSkill"
+        },
+        {
+          "line" : 79,
+          "name" : "complete"
+        },
+        {
+          "line" : 83,
+          "name" : "snapshot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 73,
+      "name" : "SkillRunnerBudgetTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SkillRunnerBudgetTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "SkillRunnerBudgetTests"
+        },
+        {
+          "line" : 74,
+          "name" : "Call"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 7,
+          "name" : "testRejectsHedgingOutputAndRetries"
+        },
+        {
+          "line" : 33,
+          "name" : "testThrowsAfterRetryStillHedges"
+        },
+        {
+          "line" : 58,
+          "name" : "testCleanOutputPassesThrough"
+        },
+        {
+          "line" : 80,
+          "name" : "makeSkill"
+        },
+        {
+          "line" : 96,
+          "name" : "complete"
+        },
+        {
+          "line" : 103,
+          "name" : "snapshot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 94,
+      "name" : "SkillRunnerHedgingTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SkillRunnerHedgingTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "SkillRunnerHedgingTests"
+        },
+        {
+          "line" : 91,
+          "name" : "Call"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testRunsSkillAndValidatesOutput"
+        },
+        {
+          "line" : 36,
+          "name" : "testRetriesOnceOnInvalidJSON"
+        },
+        {
+          "line" : 65,
+          "name" : "testRaisesAfterRetryStillFails"
+        },
+        {
+          "line" : 93,
+          "name" : "makeSkill"
+        },
+        {
+          "line" : 110,
+          "name" : "complete"
+        },
+        {
+          "line" : 118,
+          "name" : "snapshot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 104,
+      "name" : "SkillRunnerTests.swift",
+      "path" : "SharedLLMKit\/Tests\/SharedLLMKitTests\/SkillRunnerTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "SkillRunnerTests"
+        },
+        {
+          "line" : 104,
+          "name" : "Call"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 247,
+      "name" : "InfiniteBrainApp.swift",
+      "path" : "Sources\/InfiniteBrain\/App\/InfiniteBrainApp.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "InfiniteBrainApp"
+        },
+        {
+          "line" : 38,
+          "name" : "HelpMenuButton"
+        },
+        {
+          "line" : 46,
+          "name" : "ContentView"
+        },
+        {
+          "line" : 52,
+          "name" : "Tab"
+        },
+        {
+          "line" : 123,
+          "name" : "Sidebar"
+        },
+        {
+          "line" : 190,
+          "name" : "SidebarItem"
+        },
+        {
+          "line" : 230,
+          "name" : "StatusBar"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 43,
+          "name" : "glassmorphicCard"
+        },
+        {
+          "line" : 54,
+          "name" : "cardStyle"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 48,
+      "name" : "AppPalette.swift",
+      "path" : "Sources\/InfiniteBrain\/CoreUI\/AppPalette.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "AppPalette"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 117,
+          "name" : "hitTest"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 123,
+      "name" : "GraphCanvas.swift",
+      "path" : "Sources\/InfiniteBrain\/CoreUI\/GraphCanvas.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "GraphCanvas"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 15,
+          "name" : "makeCoordinator"
+        },
+        {
+          "line" : 17,
+          "name" : "makeNSView"
+        },
+        {
+          "line" : 28,
+          "name" : "updateNSView"
+        },
+        {
+          "line" : 36,
+          "name" : "loadTemplate"
+        },
+        {
+          "line" : 49,
+          "name" : "stripFrontmatter"
+        },
+        {
+          "line" : 67,
+          "name" : "userContentController"
+        },
+        {
+          "line" : 74,
+          "name" : "webView"
+        },
+        {
+          "line" : 83,
+          "name" : "flushIfReady"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 81,
+      "name" : "MarkdownPreview.swift",
+      "path" : "Sources\/InfiniteBrain\/CoreUI\/MarkdownPreview.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 12,
+          "name" : "MarkdownPreview"
+        },
+        {
+          "line" : 60,
+          "name" : "so"
+        },
+        {
+          "line" : 62,
+          "name" : "Coordinator"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 84,
+          "name" : "sizeThatFits"
+        },
+        {
+          "line" : 99,
+          "name" : "placeSubviews"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 97,
+      "name" : "UIComponents.swift",
+      "path" : "Sources\/InfiniteBrain\/CoreUI\/UIComponents.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "BadgeView"
+        },
+        {
+          "line" : 31,
+          "name" : "SidebarToggle"
+        },
+        {
+          "line" : 60,
+          "name" : "PlaceholderOutline"
+        },
+        {
+          "line" : 80,
+          "name" : "FlowLayout"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 83,
+          "name" : "drawGraph"
+        },
+        {
+          "line" : 172,
+          "name" : "nodeAlpha"
+        },
+        {
+          "line" : 188,
+          "name" : "edgeAlpha"
+        },
+        {
+          "line" : 206,
+          "name" : "rebuildCaches"
+        },
+        {
+          "line" : 219,
+          "name" : "effectivePos"
+        },
+        {
+          "line" : 223,
+          "name" : "nodeR"
+        },
+        {
+          "line" : 229,
+          "name" : "neighbourIds"
+        },
+        {
+          "line" : 240,
+          "name" : "dragGesture"
+        },
+        {
+          "line" : 277,
+          "name" : "tapGestures"
+        },
+        {
+          "line" : 330,
+          "name" : "iconBtn"
+        },
+        {
+          "line" : 345,
+          "name" : "fitIfNewGraph"
+        },
+        {
+          "line" : 352,
+          "name" : "fit"
+        },
+        {
+          "line" : 371,
+          "name" : "centerOnNode"
+        },
+        {
+          "line" : 380,
+          "name" : "fingerprint"
+        },
+        {
+          "line" : 388,
+          "name" : "worldPoint"
+        },
+        {
+          "line" : 393,
+          "name" : "hitTest"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 361,
+      "name" : "CodeGraphCanvas.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/CodeGraph\/CodeGraphCanvas.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 14,
+          "name" : "CodeGraphCanvas"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 337,
+          "name" : "detailContent"
+        },
+        {
+          "line" : 396,
+          "name" : "detailBodyForNode"
+        },
+        {
+          "line" : 465,
+          "name" : "defaultFolder"
+        },
+        {
+          "line" : 476,
+          "name" : "pickFolder"
+        },
+        {
+          "line" : 487,
+          "name" : "runScan"
+        },
+        {
+          "line" : 532,
+          "name" : "loadCachedIfAvailable"
+        },
+        {
+          "line" : 540,
+          "name" : "recomputeDisplayData"
+        },
+        {
+          "line" : 559,
+          "name" : "openNode"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 537,
+      "name" : "CodeGraphView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/CodeGraph\/CodeGraphView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "CodeGraphView"
+        },
+        {
+          "line" : 24,
+          "name" : "Status"
+        },
+        {
+          "line" : 562,
+          "name" : "a"
+        },
+        {
+          "line" : 583,
+          "name" : "CachedGraph"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 19,
+          "name" : "collectCodeArtifacts"
+        },
+        {
+          "line" : 64,
+          "name" : "collectNoteArtifacts"
+        },
+        {
+          "line" : 71,
+          "name" : "isPanelNoise"
+        },
+        {
+          "line" : 80,
+          "name" : "isHeadingChunk"
+        },
+        {
+          "line" : 87,
+          "name" : "layoutSize"
+        },
+        {
+          "line" : 95,
+          "name" : "commonAncestor"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 94,
+      "name" : "UAHelpers.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/CodeGraph\/UAHelpers.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "UAHelpers"
+        },
+        {
+          "line" : 7,
+          "name" : "CodeArtifact"
+        },
+        {
+          "line" : 13,
+          "name" : "CodeSymbol"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 192,
+          "name" : "handleDrop"
+        },
+        {
+          "line" : 203,
+          "name" : "icon"
+        },
+        {
+          "line" : 212,
+          "name" : "byteSize"
+        },
+        {
+          "line" : 312,
+          "name" : "stat"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 288,
+      "name" : "IngestView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/Dashboard\/IngestView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "IngestView"
+        },
+        {
+          "line" : 219,
+          "name" : "ResultPill"
+        },
+        {
+          "line" : 235,
+          "name" : "LogRow"
+        },
+        {
+          "line" : 265,
+          "name" : "UsageDetailsView"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 71,
+          "name" : "referenceSidebar"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 118,
+      "name" : "DraftingRoom.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/DraftingSuite\/DraftingRoom.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "DraftingRoom"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 189,
+          "name" : "wordCountPill"
+        },
+        {
+          "line" : 244,
+          "name" : "placeholder"
+        },
+        {
+          "line" : 258,
+          "name" : "formattingCitations"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 254,
+      "name" : "DraftingRoomComponents.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/DraftingSuite\/DraftingRoomComponents.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "OutlineSidebar"
+        },
+        {
+          "line" : 47,
+          "name" : "EvidenceContextView"
+        },
+        {
+          "line" : 80,
+          "name" : "SectionRow"
+        },
+        {
+          "line" : 111,
+          "name" : "DraftEditor"
+        },
+        {
+          "line" : 196,
+          "name" : "AIDraftingPanel"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 351,
+      "name" : "DraftingSetupView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/DraftingSuite\/DraftingSetupView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "DraftingSetupView"
+        },
+        {
+          "line" : 34,
+          "name" : "DraftingRoomHeader"
+        },
+        {
+          "line" : 52,
+          "name" : "HistoryPanel"
+        },
+        {
+          "line" : 96,
+          "name" : "HistoryRow"
+        },
+        {
+          "line" : 175,
+          "name" : "NewDocumentPanel"
+        },
+        {
+          "line" : 200,
+          "name" : "SourceSelectionStep"
+        },
+        {
+          "line" : 343,
+          "name" : "ProjectDetailsStep"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 71,
+          "name" : "row"
+        },
+        {
+          "line" : 158,
+          "name" : "nodeCard"
+        },
+        {
+          "line" : 185,
+          "name" : "edgeCard"
+        },
+        {
+          "line" : 325,
+          "name" : "heading"
+        },
+        {
+          "line" : 328,
+          "name" : "para"
+        },
+        {
+          "line" : 334,
+          "name" : "tip"
+        },
+        {
+          "line" : 341,
+          "name" : "bulletList"
+        },
+        {
+          "line" : 351,
+          "name" : "stepList"
+        },
+        {
+          "line" : 364,
+          "name" : "codeBlock"
+        },
+        {
+          "line" : 372,
+          "name" : "troubleRow"
+        },
+        {
+          "line" : 382,
+          "name" : "shortcutRow"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 408,
+      "name" : "HelpView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/Help\/HelpView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "HelpView"
+        },
+        {
+          "line" : 397,
+          "name" : "Topic"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "color"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 9,
+      "name" : "SchemaView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/Help\/SchemaView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "SchemaView"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 245,
+          "name" : "reload"
+        },
+        {
+          "line" : 284,
+          "name" : "persistPositions"
+        },
+        {
+          "line" : 295,
+          "name" : "hitTest"
+        },
+        {
+          "line" : 304,
+          "name" : "updateBacklinks"
+        },
+        {
+          "line" : 315,
+          "name" : "dist"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 282,
+      "name" : "GraphView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/KnowledgeGraph\/GraphView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "GraphView"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "color"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 25,
+      "name" : "NodePalette.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/KnowledgeGraph\/NodePalette.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "NodePalette"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 148,
+      "name" : "QueryView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/QueryEngine\/QueryView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "QueryView"
+        },
+        {
+          "line" : 131,
+          "name" : "ExampleRow"
+        },
+        {
+          "line" : 145,
+          "name" : "TagChip"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 152,
+          "name" : "statusRow"
+        },
+        {
+          "line" : 173,
+          "name" : "hydrate"
+        },
+        {
+          "line" : 178,
+          "name" : "saveKey"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 192,
+      "name" : "SettingsView.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/Settings\/SettingsView.swift",
+      "role" : "View",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "SettingsView"
+        },
+        {
+          "line" : 151,
+          "name" : "StatusKind"
+        },
+        {
+          "line" : 193,
+          "name" : "Card"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 84,
+          "name" : "row"
+        },
+        {
+          "line" : 194,
+          "name" : "sourceBreadcrumb"
+        },
+        {
+          "line" : 226,
+          "name" : "fileNeedsReview"
+        },
+        {
+          "line" : 234,
+          "name" : "displayName"
+        },
+        {
+          "line" : 246,
+          "name" : "refresh"
+        },
+        {
+          "line" : 276,
+          "name" : "addMarkdownFiles"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 260,
+      "name" : "VaultBrowser.swift",
+      "path" : "Sources\/InfiniteBrain\/Features\/VaultBrowser\/VaultBrowser.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "VaultBrowser"
+        },
+        {
+          "line" : 13,
+          "name" : "PreviewMode"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "main"
+        },
+        {
+          "line" : 35,
+          "name" : "runIngest"
+        },
+        {
+          "line" : 78,
+          "name" : "runQuery"
+        },
+        {
+          "line" : 106,
+          "name" : "runReindex"
+        },
+        {
+          "line" : 122,
+          "name" : "runSeed"
+        },
+        {
+          "line" : 144,
+          "name" : "parseFlags"
+        },
+        {
+          "line" : 169,
+          "name" : "wipePreviousIngests"
+        },
+        {
+          "line" : 187,
+          "name" : "sha256Hex"
+        },
+        {
+          "line" : 192,
+          "name" : "makeClient"
+        },
+        {
+          "line" : 204,
+          "name" : "printUsage"
+        },
+        {
+          "line" : 231,
+          "name" : "version"
+        },
+        {
+          "line" : 233,
+          "name" : "fail"
+        },
+        {
+          "line" : 241,
+          "name" : "write"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 215,
+      "name" : "main.swift",
+      "path" : "Sources\/InfiniteBrainCLI\/main.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "InfiniteBrainCLI"
+        },
+        {
+          "line" : 134,
+          "name" : "Parsed"
+        },
+        {
+          "line" : 240,
+          "name" : "StderrStream"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 21,
+          "name" : "skillsRoot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 25,
+      "name" : "BundledResources.swift",
+      "path" : "Sources\/InfiniteBrainCore\/BundledResources.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "BundledResources"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 35,
+          "name" : "settle"
+        },
+        {
+          "line" : 49,
+          "name" : "tick"
+        },
+        {
+          "line" : 100,
+          "name" : "applyRepulsion"
+        },
+        {
+          "line" : 130,
+          "name" : "appliedData"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 128,
+      "name" : "CGSimulation.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/CGSimulation.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "CGSimulation"
+        },
+        {
+          "line" : 11,
+          "name" : "NodeState"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "compute"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 37,
+      "name" : "CodeGraphLayout.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/CodeGraphLayout.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "CodeGraphLayout"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 128,
+          "name" : "color"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 150,
+      "name" : "CodeGraphModels.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/CodeGraphModels.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "CGNodeKind"
+        },
+        {
+          "line" : 55,
+          "name" : "CGEdgeKind"
+        },
+        {
+          "line" : 68,
+          "name" : "CGNode"
+        },
+        {
+          "line" : 83,
+          "name" : "CGEdge"
+        },
+        {
+          "line" : 93,
+          "name" : "UALayer"
+        },
+        {
+          "line" : 103,
+          "name" : "UATourStep"
+        },
+        {
+          "line" : 113,
+          "name" : "CGData"
+        },
+        {
+          "line" : 127,
+          "name" : "CGPalette"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 15,
+          "name" : "generateNoteNodes"
+        },
+        {
+          "line" : 52,
+          "name" : "noteMarkdown"
+        },
+        {
+          "line" : 132,
+          "name" : "writeIndex"
+        },
+        {
+          "line" : 191,
+          "name" : "writeGraphJSON"
+        },
+        {
+          "line" : 252,
+          "name" : "buildUsedBy"
+        },
+        {
+          "line" : 262,
+          "name" : "inferRole"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 255,
+      "name" : "CodeNoteWriter.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/CodeNoteWriter.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 10,
+          "name" : "CodeNoteWriter"
+        },
+        {
+          "line" : 194,
+          "name" : "FileNode"
+        },
+        {
+          "line" : 205,
+          "name" : "SymEntry"
+        },
+        {
+          "line" : 229,
+          "name" : "Graph"
+        },
+        {
+          "line" : 234,
+          "name" : "Summary"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 18,
+          "name" : "resolve"
+        },
+        {
+          "line" : 35,
+          "name" : "language"
+        },
+        {
+          "line" : 46,
+          "name" : "markdownHeading"
+        },
+        {
+          "line" : 56,
+          "name" : "importSpecifier"
+        },
+        {
+          "line" : 75,
+          "name" : "symbol"
+        },
+        {
+          "line" : 79,
+          "name" : "nameAfter"
+        },
+        {
+          "line" : 87,
+          "name" : "decl"
+        },
+        {
+          "line" : 109,
+          "name" : "firstQuoted"
+        },
+        {
+          "line" : 123,
+          "name" : "run"
+        },
+        {
+          "line" : 146,
+          "name" : "fallbackEnumerate"
+        },
+        {
+          "line" : 172,
+          "name" : "parseFiles"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 182,
+      "name" : "FileStructureExtractor.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/FileStructureExtractor.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "FileStructureExtractor"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "resolve"
+        },
+        {
+          "line" : 14,
+          "name" : "resolvePython"
+        },
+        {
+          "line" : 29,
+          "name" : "resolveJS"
+        },
+        {
+          "line" : 42,
+          "name" : "normalize"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 46,
+      "name" : "ImportResolver.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/ImportResolver.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "ImportResolver"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "run"
+        },
+        {
+          "line" : 14,
+          "name" : "run"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 65,
+      "name" : "ProcessLauncher.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/ProcessLauncher.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "ProcessLauncher"
+        },
+        {
+          "line" : 11,
+          "name" : "SystemProcessLauncher"
+        },
+        {
+          "line" : 18,
+          "name" : "ProcBox"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 18,
+          "name" : "resolvePython"
+        },
+        {
+          "line" : 31,
+          "name" : "bundledScriptURL"
+        },
+        {
+          "line" : 35,
+          "name" : "run"
+        },
+        {
+          "line" : 47,
+          "name" : "parse"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 54,
+      "name" : "PythonASTExtractor.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/PythonASTExtractor.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "PythonASTExtractor"
+        },
+        {
+          "line" : 48,
+          "name" : "RawSym"
+        },
+        {
+          "line" : 49,
+          "name" : "RawImp"
+        },
+        {
+          "line" : 50,
+          "name" : "RawFile"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 20,
+      "name" : "RawFileStructure.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/RawFileStructure.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "RawFileStructure"
+        },
+        {
+          "line" : 17,
+          "name" : "RawImport"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 28,
+      "name" : "ScanResult.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/ScanResult.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "ScanResult"
+        },
+        {
+          "line" : 4,
+          "name" : "FileEntry"
+        },
+        {
+          "line" : 12,
+          "name" : "Symbol"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "build"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 57,
+      "name" : "StructureGraphBuilder.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/StructureGraphBuilder.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "StructureGraphBuilder"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 14,
+          "name" : "scan"
+        },
+        {
+          "line" : 21,
+          "name" : "assemble"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 42,
+      "name" : "StructureScanner.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/StructureScanner.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "StructureScanner"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 11,
+      "name" : "UAError.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/UAError.swift",
+      "role" : "Error",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "UAError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 46,
+          "name" : "parse"
+        },
+        {
+          "line" : 103,
+          "name" : "mapNodeType"
+        },
+        {
+          "line" : 129,
+          "name" : "mapEdgeType"
+        },
+        {
+          "line" : 172,
+          "name" : "resolveFileURL"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 173,
+      "name" : "UAParser.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/UAParser.swift",
+      "role" : "CodeGraph",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "UAParser"
+        },
+        {
+          "line" : 6,
+          "name" : "RawGraph"
+        },
+        {
+          "line" : 13,
+          "name" : "RawNode"
+        },
+        {
+          "line" : 23,
+          "name" : "RawEdge"
+        },
+        {
+          "line" : 30,
+          "name" : "RawLayer"
+        },
+        {
+          "line" : 36,
+          "name" : "RawTourStep"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 29,
+          "name" : "directoryName"
+        },
+        {
+          "line" : 35,
+          "name" : "dir"
+        },
+        {
+          "line" : 42,
+          "name" : "save"
+        },
+        {
+          "line" : 53,
+          "name" : "loadGraphJSON"
+        },
+        {
+          "line" : 60,
+          "name" : "invalidate"
+        },
+        {
+          "line" : 66,
+          "name" : "lastRun"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 66,
+      "name" : "UAStore.swift",
+      "path" : "Sources\/InfiniteBrainCore\/CodeGraph\/UAStore.swift",
+      "role" : "Store",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "UARunMetadata"
+        },
+        {
+          "line" : 11,
+          "name" : "UAStore"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 14,
+          "name" : "scan"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 48,
+      "name" : "DocumentScanner.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Extraction\/DocumentScanner.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "ScanResults"
+        },
+        {
+          "line" : 11,
+          "name" : "DocumentScanner"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 11,
+          "name" : "extract"
+        },
+        {
+          "line" : 80,
+          "name" : "firstMatch"
+        },
+        {
+          "line" : 91,
+          "name" : "stripHTML"
+        },
+        {
+          "line" : 122,
+          "name" : "decodeEntities"
+        },
+        {
+          "line" : 141,
+          "name" : "replacingOccurrences"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 154,
+      "name" : "EPUBExtractor.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Extraction\/EPUBExtractor.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "EPUBExtractor"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 16,
+          "name" : "read"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 30,
+      "name" : "InputReader.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Extraction\/InputReader.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "InputReader"
+        },
+        {
+          "line" : 7,
+          "name" : "Result"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 24,
+          "name" : "extract"
+        },
+        {
+          "line" : 49,
+          "name" : "ocrPage"
+        },
+        {
+          "line" : 78,
+          "name" : "renderPage"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 85,
+      "name" : "PDFExtractor.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Extraction\/PDFExtractor.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "PDFExtractor"
+        },
+        {
+          "line" : 10,
+          "name" : "Page"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 23,
+          "name" : "chunk"
+        },
+        {
+          "line" : 85,
+          "name" : "findBoundaries"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 107,
+      "name" : "TextChunker.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Extraction\/TextChunker.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "SemanticBoundary"
+        },
+        {
+          "line" : 11,
+          "name" : "Chunk"
+        },
+        {
+          "line" : 20,
+          "name" : "TextChunker"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 47,
+          "name" : "compute"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 90,
+      "name" : "GraphLayout.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Graph\/GraphLayout.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "GraphNode"
+        },
+        {
+          "line" : 25,
+          "name" : "GraphEdge"
+        },
+        {
+          "line" : 34,
+          "name" : "GraphData"
+        },
+        {
+          "line" : 46,
+          "name" : "GraphLayout"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 24,
+          "name" : "step"
+        },
+        {
+          "line" : 80,
+          "name" : "applyRepulsion"
+        },
+        {
+          "line" : 109,
+          "name" : "calculationBounds"
+        },
+        {
+          "line" : 123,
+          "name" : "updatePositions"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 115,
+      "name" : "GraphSimulation.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Graph\/GraphSimulation.swift",
+      "role" : "Module",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "GraphSimulation"
+        },
+        {
+          "line" : 11,
+          "name" : "NodeState"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 43,
+          "name" : "saveConcurrency"
+        },
+        {
+          "line" : 47,
+          "name" : "bestAvailableProvider"
+        },
+        {
+          "line" : 79,
+          "name" : "apiKey"
+        },
+        {
+          "line" : 83,
+          "name" : "setAPIKey"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 79,
+      "name" : "AppSettings.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/AppSettings.swift",
+      "role" : "Infrastructure",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "AppSettings"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 17,
+          "name" : "setMaxConcurrent"
+        },
+        {
+          "line" : 28,
+          "name" : "acquire"
+        },
+        {
+          "line" : 40,
+          "name" : "release"
+        },
+        {
+          "line" : 46,
+          "name" : "withSlot"
+        },
+        {
+          "line" : 52,
+          "name" : "wakeUp"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 49,
+      "name" : "GlobalRateGate.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/GlobalRateGate.swift",
+      "role" : "Infrastructure",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 4,
+          "name" : "next"
+        },
+        {
+          "line" : 8,
+          "name" : "now"
+        },
+        {
+          "line" : 13,
+          "name" : "now"
+        },
+        {
+          "line" : 22,
+          "name" : "next"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 31,
+      "name" : "IDGenerator.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/IDGenerator.swift",
+      "role" : "Infrastructure",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "IDGenerator"
+        },
+        {
+          "line" : 7,
+          "name" : "DateProvider"
+        },
+        {
+          "line" : 11,
+          "name" : "SystemDateProvider"
+        },
+        {
+          "line" : 18,
+          "name" : "ULIDGenerator"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "complete"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 17,
+      "name" : "LocalMLProvider.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/LocalMLProvider.swift",
+      "role" : "Infrastructure",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "LocalMLProvider"
+        },
+        {
+          "line" : 17,
+          "name" : "LocalMLError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 26,
+          "name" : "logger"
+        },
+        {
+          "line" : 41,
+          "name" : "info"
+        },
+        {
+          "line" : 45,
+          "name" : "error"
+        },
+        {
+          "line" : 53,
+          "name" : "debug"
+        },
+        {
+          "line" : 57,
+          "name" : "fault"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 48,
+      "name" : "LogService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/LogService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "LogService"
+        },
+        {
+          "line" : 7,
+          "name" : "Category"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 28,
+          "name" : "setPersistURL"
+        },
+        {
+          "line" : 33,
+          "name" : "record"
+        },
+        {
+          "line" : 38,
+          "name" : "getSummary"
+        },
+        {
+          "line" : 46,
+          "name" : "save"
+        },
+        {
+          "line" : 56,
+          "name" : "load"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 58,
+      "name" : "UsageTracker.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Infrastructure\/UsageTracker.swift",
+      "role" : "Infrastructure",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "UsageMetric"
+        },
+        {
+          "line" : 63,
+          "name" : "UsageSummary"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 24,
+      "name" : "EdgeType.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/EdgeType.swift",
+      "role" : "Model",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "EdgeType"
+        },
+        {
+          "line" : 23,
+          "name" : "Edge"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 68,
+      "name" : "NodeType+Schema.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/NodeType+Schema.swift",
+      "role" : "Model",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 38,
+      "name" : "NodeType.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/NodeType.swift",
+      "role" : "Model",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "NodeType"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 46,
+      "name" : "Note.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/Note.swift",
+      "role" : "Model",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "Note"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 17,
+          "name" : "insert"
+        },
+        {
+          "line" : 41,
+          "name" : "subdivide"
+        },
+        {
+          "line" : 55,
+          "name" : "insertIntoChildren"
+        },
+        {
+          "line" : 59,
+          "name" : "updateMass"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 54,
+      "name" : "QuadTree.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/QuadTree.swift",
+      "role" : "Model",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "QuadTreeNode"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 12,
+      "name" : "Vault.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Models\/Vault.swift",
+      "role" : "Model",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "Vault"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 14,
+          "name" : "index"
+        },
+        {
+          "line" : 26,
+          "name" : "deindex"
+        },
+        {
+          "line" : 35,
+          "name" : "getBacklinks"
+        },
+        {
+          "line" : 39,
+          "name" : "getBatch"
+        },
+        {
+          "line" : 43,
+          "name" : "clear"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 40,
+      "name" : "BacklinkIndex.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/BacklinkIndex.swift",
+      "role" : "Persistence",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 34,
+          "name" : "load"
+        },
+        {
+          "line" : 41,
+          "name" : "save"
+        },
+        {
+          "line" : 50,
+          "name" : "markChunkComplete"
+        },
+        {
+          "line" : 57,
+          "name" : "delete"
+        },
+        {
+          "line" : 64,
+          "name" : "path"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 58,
+      "name" : "CheckpointStore.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/CheckpointStore.swift",
+      "role" : "Store",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "Checkpoint"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 11,
+          "name" : "rebuild"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 35,
+      "name" : "IndexRebuilder.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/IndexRebuilder.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 10,
+          "name" : "IndexRebuilder"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "get"
+        },
+        {
+          "line" : 6,
+          "name" : "set"
+        },
+        {
+          "line" : 21,
+          "name" : "get"
+        },
+        {
+          "line" : 37,
+          "name" : "set"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 48,
+      "name" : "Keychain.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/Keychain.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "KeychainStore"
+        },
+        {
+          "line" : 9,
+          "name" : "KeychainError"
+        },
+        {
+          "line" : 15,
+          "name" : "SystemKeychain"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 30,
+          "name" : "load"
+        },
+        {
+          "line" : 42,
+          "name" : "readInt32"
+        },
+        {
+          "line" : 49,
+          "name" : "readString"
+        },
+        {
+          "line" : 83,
+          "name" : "readDouble"
+        },
+        {
+          "line" : 97,
+          "name" : "save"
+        },
+        {
+          "line" : 99,
+          "name" : "appendInt32"
+        },
+        {
+          "line" : 103,
+          "name" : "appendDouble"
+        },
+        {
+          "line" : 107,
+          "name" : "appendString"
+        },
+        {
+          "line" : 137,
+          "name" : "update"
+        },
+        {
+          "line" : 152,
+          "name" : "updatePosition"
+        },
+        {
+          "line" : 157,
+          "name" : "remove"
+        },
+        {
+          "line" : 161,
+          "name" : "getBacklinks"
+        },
+        {
+          "line" : 171,
+          "name" : "allEntries"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 149,
+      "name" : "MetadataIndex.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/MetadataIndex.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "Entry"
+        },
+        {
+          "line" : 19,
+          "name" : "EdgeEntry"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 13,
+          "name" : "serialize"
+        },
+        {
+          "line" : 44,
+          "name" : "parse"
+        },
+        {
+          "line" : 134,
+          "name" : "parseEdgeBlock"
+        },
+        {
+          "line" : 138,
+          "name" : "flush"
+        },
+        {
+          "line" : 177,
+          "name" : "parseInlineList"
+        },
+        {
+          "line" : 185,
+          "name" : "quote"
+        },
+        {
+          "line" : 191,
+          "name" : "unquote"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 184,
+      "name" : "NoteSerializer.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/NoteSerializer.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "NoteSerializer"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 17,
+          "name" : "ensureSeeded"
+        },
+        {
+          "line" : 28,
+          "name" : "copyTreeIfMissing"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 38,
+      "name" : "VaultInitializer.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/VaultInitializer.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "VaultInitializer"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 35,
+          "name" : "warmCache"
+        },
+        {
+          "line" : 55,
+          "name" : "invalidateCache"
+        },
+        {
+          "line" : 65,
+          "name" : "write"
+        },
+        {
+          "line" : 75,
+          "name" : "read"
+        },
+        {
+          "line" : 85,
+          "name" : "delete"
+        },
+        {
+          "line" : 96,
+          "name" : "saveMetadata"
+        },
+        {
+          "line" : 104,
+          "name" : "allNotes"
+        },
+        {
+          "line" : 122,
+          "name" : "fileName"
+        },
+        {
+          "line" : 126,
+          "name" : "slugify"
+        },
+        {
+          "line" : 143,
+          "name" : "directory"
+        },
+        {
+          "line" : 167,
+          "name" : "folderName"
+        },
+        {
+          "line" : 173,
+          "name" : "readWithoutAutoCreate"
+        },
+        {
+          "line" : 181,
+          "name" : "locateFile"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 171,
+      "name" : "VaultStore.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/VaultStore.swift",
+      "role" : "Store",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "VaultStoreError"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 49,
+          "name" : "stop"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 44,
+      "name" : "VaultWatcher.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Persistence\/VaultWatcher.swift",
+      "role" : "Persistence",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "WatcherEvent"
+        },
+        {
+          "line" : 9,
+          "name" : "VaultWatcher"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 21,
+          "name" : "analyze"
+        },
+        {
+          "line" : 51,
+          "name" : "main"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "python",
+      "loc" : 57,
+      "name" : "code_ast_scan.py",
+      "path" : "Sources\/InfiniteBrainCore\/Resources\/code_ast_scan.py",
+      "role" : "Module",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 1,
+          "name" : "n"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "javascript",
+      "loc" : 1,
+      "name" : "auto-render.min.js",
+      "path" : "Sources\/InfiniteBrainCore\/Resources\/web\/auto-render.min.js",
+      "role" : "Web",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 1,
+          "name" : "e"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "javascript",
+      "loc" : 1,
+      "name" : "katex.min.js",
+      "path" : "Sources\/InfiniteBrainCore\/Resources\/web\/katex.min.js",
+      "role" : "Web",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "t"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "javascript",
+      "loc" : 6,
+      "name" : "marked.min.js",
+      "path" : "Sources\/InfiniteBrainCore\/Resources\/web\/marked.min.js",
+      "role" : "Web",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 67,
+          "name" : "runSkill"
+        },
+        {
+          "line" : 87,
+          "name" : "planOutline"
+        },
+        {
+          "line" : 101,
+          "name" : "generateSection"
+        },
+        {
+          "line" : 141,
+          "name" : "autoRetrieveIds"
+        },
+        {
+          "line" : 148,
+          "name" : "compose"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 149,
+      "name" : "DraftingService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/DraftingService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "DraftSection"
+        },
+        {
+          "line" : 29,
+          "name" : "DraftingSession"
+        },
+        {
+          "line" : 166,
+          "name" : "Draft"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 89,
+          "name" : "revertIngest"
+        },
+        {
+          "line" : 110,
+          "name" : "progress"
+        },
+        {
+          "line" : 114,
+          "name" : "ingest"
+        },
+        {
+          "line" : 231,
+          "name" : "launchNextChunk"
+        },
+        {
+          "line" : 366,
+          "name" : "decideOne"
+        },
+        {
+          "line" : 481,
+          "name" : "readText"
+        },
+        {
+          "line" : 489,
+          "name" : "parseEdges"
+        },
+        {
+          "line" : 504,
+          "name" : "brief"
+        },
+        {
+          "line" : 510,
+          "name" : "numberValue"
+        },
+        {
+          "line" : 518,
+          "name" : "hash"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 478,
+      "name" : "Orchestrator.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/Orchestrator.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "IngestResult"
+        },
+        {
+          "line" : 21,
+          "name" : "UnitOutcome"
+        },
+        {
+          "line" : 216,
+          "name" : "WorkResult"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 52,
+          "name" : "ask"
+        },
+        {
+          "line" : 62,
+          "name" : "askTwoPass"
+        },
+        {
+          "line" : 122,
+          "name" : "research"
+        },
+        {
+          "line" : 193,
+          "name" : "askSinglePass"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 194,
+      "name" : "QueryService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/QueryService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "Answer"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 7,
+          "name" : "sync"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 35,
+      "name" : "SkillSyncService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/SkillSyncService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "SkillSyncService"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "resolveFiles"
+        },
+        {
+          "line" : 31,
+          "name" : "isValidType"
+        },
+        {
+          "line" : 37,
+          "name" : "makeOrchestrator"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 47,
+      "name" : "UnifiedIngestionService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/UnifiedIngestionService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "UnifiedIngestionService"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 20,
+          "name" : "checkHealth"
+        },
+        {
+          "line" : 85,
+          "name" : "repair"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 90,
+      "name" : "VaultHealthService.swift",
+      "path" : "Sources\/InfiniteBrainCore\/Services\/VaultHealthService.swift",
+      "role" : "Service",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "HealthIssue"
+        },
+        {
+          "line" : 5,
+          "name" : "Severity"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 42,
+          "name" : "startSession"
+        },
+        {
+          "line" : 68,
+          "name" : "resumeSession"
+        },
+        {
+          "line" : 75,
+          "name" : "toggleGlobalCitation"
+        },
+        {
+          "line" : 83,
+          "name" : "generateActiveSection"
+        },
+        {
+          "line" : 124,
+          "name" : "updateSectionContent"
+        },
+        {
+          "line" : 131,
+          "name" : "updateSectionInstruction"
+        },
+        {
+          "line" : 136,
+          "name" : "addSection"
+        },
+        {
+          "line" : 144,
+          "name" : "removeSection"
+        },
+        {
+          "line" : 153,
+          "name" : "toggleCitation"
+        },
+        {
+          "line" : 164,
+          "name" : "searchNotes"
+        },
+        {
+          "line" : 195,
+          "name" : "importFiles"
+        },
+        {
+          "line" : 263,
+          "name" : "addSearchResultsToCitations"
+        },
+        {
+          "line" : 274,
+          "name" : "makeService"
+        },
+        {
+          "line" : 308,
+          "name" : "saveSession"
+        },
+        {
+          "line" : 323,
+          "name" : "deleteSession"
+        },
+        {
+          "line" : 337,
+          "name" : "loadRecentSessions"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 305,
+      "name" : "DraftingViewModel.swift",
+      "path" : "Sources\/InfiniteBrainCore\/ViewModels\/DraftingViewModel.swift",
+      "role" : "ViewModel",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "DraftingViewModel"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 23,
+          "name" : "add"
+        },
+        {
+          "line" : 29,
+          "name" : "clear"
+        },
+        {
+          "line" : 40,
+          "name" : "toggle"
+        },
+        {
+          "line" : 57,
+          "name" : "wipePrevious"
+        },
+        {
+          "line" : 87,
+          "name" : "revertIngest"
+        },
+        {
+          "line" : 114,
+          "name" : "complete"
+        },
+        {
+          "line" : 119,
+          "name" : "sha256Hex"
+        },
+        {
+          "line" : 124,
+          "name" : "run"
+        },
+        {
+          "line" : 244,
+          "name" : "append"
+        },
+        {
+          "line" : 251,
+          "name" : "appendFormattedIngestStart"
+        },
+        {
+          "line" : 264,
+          "name" : "skillsRoot"
+        },
+        {
+          "line" : 275,
+          "name" : "startWatcher"
+        },
+        {
+          "line" : 290,
+          "name" : "stopWatcher"
+        },
+        {
+          "line" : 295,
+          "name" : "handleWatcherEvent"
+        },
+        {
+          "line" : 306,
+          "name" : "reconcileVault"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 298,
+      "name" : "IngestViewModel.swift",
+      "path" : "Sources\/InfiniteBrainCore\/ViewModels\/IngestViewModel.swift",
+      "role" : "ViewModel",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "IngestViewModel"
+        },
+        {
+          "line" : 113,
+          "name" : "SilentLLMClient"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 16,
+          "name" : "ask"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 81,
+      "name" : "QueryViewModel.swift",
+      "path" : "Sources\/InfiniteBrainCore\/ViewModels\/QueryViewModel.swift",
+      "role" : "ViewModel",
+      "types" : [
+        {
+          "line" : 6,
+          "name" : "QueryViewModel"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "setUp"
+        },
+        {
+          "line" : 14,
+          "name" : "tearDown"
+        },
+        {
+          "line" : 19,
+          "name" : "testVaultPathRoundTrip"
+        },
+        {
+          "line" : 31,
+          "name" : "testAPIKeyRoundTripViaKeychain"
+        },
+        {
+          "line" : 41,
+          "name" : "testAPIKeyConfigurationFlag"
+        },
+        {
+          "line" : 53,
+          "name" : "testFirstRunDefaultsToInstalledCLIWhenAvailable"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 53,
+      "name" : "AppSettingsTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/AppSettingsTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "AppSettingsTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testSettleSpreadsSuperimposedNodes"
+        },
+        {
+          "line" : 22,
+          "name" : "testConnectedNodesDontFlyInfinitelyFar"
+        },
+        {
+          "line" : 37,
+          "name" : "testEmptyGraphHandledGracefully"
+        },
+        {
+          "line" : 44,
+          "name" : "testAppliedDataPreservesEdgesAndMetadata"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 50,
+      "name" : "CGSimulationTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/CGSimulationTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "CGSimulationTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testSaveLoadDeleteRoundTrip"
+        },
+        {
+          "line" : 35,
+          "name" : "testIsCompleteWhenAllChunksMarked"
+        },
+        {
+          "line" : 43,
+          "name" : "testLoadReturnsNilWhenAbsent"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 43,
+      "name" : "CheckpointStoreTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/CheckpointStoreTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "CheckpointStoreTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testNodesReceiveNonZeroPositions"
+        },
+        {
+          "line" : 15,
+          "name" : "testEdgeToMissingNodeIsDropped"
+        },
+        {
+          "line" : 27,
+          "name" : "testEmptyInputReturnsEmpty"
+        },
+        {
+          "line" : 33,
+          "name" : "testNodesStayWithinCanvas"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 42,
+      "name" : "CodeGraphLayoutTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/CodeGraphLayoutTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "CodeGraphLayoutTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "testFourUnitsUnderConcurrencyTwoYieldFourNotesInOrder"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 54,
+      "name" : "ConcurrencyTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/ConcurrencyTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "ConcurrencyTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "testSecondIngestOfSameFileSkipsAndDoesNotDuplicateSource"
+        },
+        {
+          "line" : 22,
+          "name" : "makeOrch"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 40,
+      "name" : "DuplicateIngestTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/DuplicateIngestTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "DuplicateIngestTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testExtractsTextFromMinimalEpub"
+        },
+        {
+          "line" : 21,
+          "name" : "testStripsScriptsAndStyles"
+        },
+        {
+          "line" : 35,
+          "name" : "testDecodesNumericEntities"
+        },
+        {
+          "line" : 42,
+          "name" : "makeTempDir"
+        },
+        {
+          "line" : 51,
+          "name" : "makeMinimalEpub"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 108,
+      "name" : "EPUBExtractorTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/EPUBExtractorTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "EPUBExtractorTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "testEdgesArePersistedAfterAdd"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 52,
+      "name" : "EdgeInferenceTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/EdgeInferenceTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "EdgeInferenceTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testCodeGraphEdgeCases"
+        },
+        {
+          "line" : 12,
+          "name" : "testEdgeTypeAllCasesIncludesNew"
+        },
+        {
+          "line" : 17,
+          "name" : "testEdgeTypeRoundTripsThroughJSON"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 21,
+      "name" : "EdgeTypeTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/EdgeTypeTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "EdgeTypeTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testEmptyInputProducesEmptyGraph"
+        },
+        {
+          "line" : 11,
+          "name" : "testNodeCountMatchesNoteCountAndPositionsAreInsideCanvas"
+        },
+        {
+          "line" : 32,
+          "name" : "testEdgesAreOnlyEmittedWhenBothEndpointsArePresent"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 49,
+      "name" : "GraphLayoutTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/GraphLayoutTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "GraphLayoutTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testLegacyInitLeavesMetadataNil"
+        },
+        {
+          "line" : 12,
+          "name" : "testInitWithMetadata"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 16,
+      "name" : "GraphNodeMetadataTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/GraphNodeMetadataTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "GraphNodeMetadataTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "fixture"
+        },
+        {
+          "line" : 14,
+          "name" : "testParsesSimpleGraph"
+        },
+        {
+          "line" : 33,
+          "name" : "testUnknownNodeTypesMapsToOther"
+        },
+        {
+          "line" : 41,
+          "name" : "testMissingNodesFieldThrows"
+        },
+        {
+          "line" : 50,
+          "name" : "testEmptyGraphParsesClean"
+        },
+        {
+          "line" : 57,
+          "name" : "testLayersAndTourParsed"
+        },
+        {
+          "line" : 75,
+          "name" : "testLineRangeSingleEntry"
+        },
+        {
+          "line" : 85,
+          "name" : "testRelativeFilePathResolvedAgainstRepoRoot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 84,
+      "name" : "GraphifyParserTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/GraphifyParserTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "UAParserTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "setUp"
+        },
+        {
+          "line" : 16,
+          "name" : "tearDown"
+        },
+        {
+          "line" : 20,
+          "name" : "testSaveAndLoadGraphJSON"
+        },
+        {
+          "line" : 26,
+          "name" : "testLastRunMetadata"
+        },
+        {
+          "line" : 34,
+          "name" : "testLoadMissingReturnsNil"
+        },
+        {
+          "line" : 40,
+          "name" : "testInvalidateRemovesCache"
+        },
+        {
+          "line" : 46,
+          "name" : "testDifferentTargetsHaveSeparateEntries"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 47,
+      "name" : "GraphifyStoreTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/GraphifyStoreTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "UAStoreTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 10,
+          "name" : "testRelativeTSImportResolved"
+        },
+        {
+          "line" : 17,
+          "name" : "testRelativeTSIndexImportResolved"
+        },
+        {
+          "line" : 24,
+          "name" : "testBarePackageReturnsNil"
+        },
+        {
+          "line" : 31,
+          "name" : "testPythonModuleResolved"
+        },
+        {
+          "line" : 38,
+          "name" : "testPythonFromImportResolved"
+        },
+        {
+          "line" : 45,
+          "name" : "testSwiftImportReturnsNil"
+        },
+        {
+          "line" : 52,
+          "name" : "testNormalizeDotDot"
+        },
+        {
+          "line" : 56,
+          "name" : "testNormalizeDot"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 50,
+      "name" : "ImportResolverTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/ImportResolverTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "ImportResolverTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testRebuildIndexFromMarkdownDropsStaleEntriesAndAddsMissingOnes"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 39,
+      "name" : "IndexRebuilderTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/IndexRebuilderTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "IndexRebuilderTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 10,
+          "name" : "testLongInputProducesManyNotesViaChunking"
+        },
+        {
+          "line" : 49,
+          "name" : "testShortInputStillUsesOnlyOneAtomizeCall"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 65,
+      "name" : "LongInputIngestTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/LongInputIngestTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "LongInputIngestTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testAllTwentyNodeTypesPresent"
+        },
+        {
+          "line" : 9,
+          "name" : "testAllFourteenEdgeTypesPresent"
+        },
+        {
+          "line" : 13,
+          "name" : "testCodeGraphNodeTypeConstants"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 21,
+      "name" : "NodeTypeTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/NodeTypeTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "NodeTypeTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "testReconcileSeesPreviousNoteAsCandidateOnSecondIngest"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 60,
+      "name" : "OrchestratorEmbeddingTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/OrchestratorEmbeddingTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "OrchestratorEmbeddingTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testIngestsTextFileAndWritesNotes"
+        },
+        {
+          "line" : 49,
+          "name" : "testReconcilerSkipDecisionDoesNotWriteNote"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 69,
+      "name" : "OrchestratorTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/OrchestratorTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "OrchestratorTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 10,
+          "name" : "testOrphanedSourceTriggersReingestNotSkip"
+        },
+        {
+          "line" : 62,
+          "name" : "sha256Hex"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 60,
+      "name" : "OrphanedSourceReingestTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/OrphanedSourceReingestTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "OrphanedSourceReingestTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "testWriteAndReadRoundTripUnderSourceFolder"
+        },
+        {
+          "line" : 50,
+          "name" : "testFallsBackToLegacyTypeFolderWhenNoSource"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 61,
+      "name" : "PerSourceFolderTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/PerSourceFolderTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "PerSourceFolderTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testQuadTreePerformance"
+        },
+        {
+          "line" : 23,
+          "name" : "testMetadataIndexPersistence"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 47,
+      "name" : "Phase6OptimizationTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/Phase6OptimizationTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "Phase6OptimizationTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testNodeCoordinatePersistence"
+        },
+        {
+          "line" : 33,
+          "name" : "testSIMDSearchPerformance"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 48,
+      "name" : "Phase7OptimizationTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/Phase7OptimizationTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "Phase7OptimizationTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 6,
+          "name" : "testConcurrentRebuildPerformance"
+        },
+        {
+          "line" : 40,
+          "name" : "embed"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 37,
+      "name" : "Phase8ConcurrencyTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/Phase8ConcurrencyTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 5,
+          "name" : "Phase8ConcurrencyTests"
+        },
+        {
+          "line" : 39,
+          "name" : "FakeEmbeddingProvider"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testCustomNodeTypeRoundTrip"
+        },
+        {
+          "line" : 29,
+          "name" : "testLegacyNodeTypeConsistency"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 31,
+      "name" : "Phase9DynamicTaxonomyTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/Phase9DynamicTaxonomyTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "Phase9DynamicTaxonomyTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 9,
+          "name" : "testTwoPassLoadsOnlySelectedBodies"
+        },
+        {
+          "line" : 40,
+          "name" : "embed"
+        },
+        {
+          "line" : 83,
+          "name" : "testSinglePassSkipsSelectionStep"
+        },
+        {
+          "line" : 96,
+          "name" : "embed"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 106,
+      "name" : "QueryTwoPassTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/QueryTwoPassTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 8,
+          "name" : "QueryTwoPassTests"
+        },
+        {
+          "line" : 39,
+          "name" : "StaticEmbed"
+        },
+        {
+          "line" : 95,
+          "name" : "StaticEmbed"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 8,
+          "name" : "testInterruptedIngestResumesMissingChunks"
+        },
+        {
+          "line" : 66,
+          "name" : "sha256Hex"
+        },
+        {
+          "line" : 85,
+          "name" : "complete"
+        },
+        {
+          "line" : 111,
+          "name" : "parseChunkIndex"
+        },
+        {
+          "line" : 123,
+          "name" : "bump"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 111,
+      "name" : "ResumeIntegrationTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/ResumeIntegrationTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 7,
+          "name" : "ResumeIntegrationTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 10,
+          "name" : "testIngestEmitsSourceNoteAndLinksAtomicNoteToIt"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 40,
+      "name" : "SourceNoteTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/SourceNoteTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "SourceNoteTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 31,
+          "name" : "make"
+        },
+        {
+          "line" : 46,
+          "name" : "complete"
+        },
+        {
+          "line" : 60,
+          "name" : "matchToken"
+        },
+        {
+          "line" : 79,
+          "name" : "record"
+        },
+        {
+          "line" : 80,
+          "name" : "prompts"
+        },
+        {
+          "line" : 92,
+          "name" : "complete"
+        },
+        {
+          "line" : 111,
+          "name" : "next"
+        },
+        {
+          "line" : 118,
+          "name" : "bump"
+        },
+        {
+          "line" : 124,
+          "name" : "now"
+        },
+        {
+          "line" : 132,
+          "name" : "embed"
+        },
+        {
+          "line" : 151,
+          "name" : "get"
+        },
+        {
+          "line" : 154,
+          "name" : "set"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 143,
+      "name" : "TestSupport.swift",
+      "path" : "Tests\/InfiniteBrainTests\/TestSupport.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 9,
+          "name" : "TestPaths"
+        },
+        {
+          "line" : 29,
+          "name" : "TestVault"
+        },
+        {
+          "line" : 108,
+          "name" : "FixedIDGenerator"
+        },
+        {
+          "line" : 115,
+          "name" : "Counter"
+        },
+        {
+          "line" : 122,
+          "name" : "FixedDateProvider"
+        },
+        {
+          "line" : 130,
+          "name" : "HashEmbeddingProvider"
+        },
+        {
+          "line" : 148,
+          "name" : "InMemoryKeychain"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 7,
+          "name" : "testShortInputProducesOneChunk"
+        },
+        {
+          "line" : 13,
+          "name" : "testEmptyInputProducesNoChunks"
+        },
+        {
+          "line" : 18,
+          "name" : "testPacksParagraphsUntilTarget"
+        },
+        {
+          "line" : 31,
+          "name" : "testSplitsParagraphLargerThanTarget"
+        },
+        {
+          "line" : 42,
+          "name" : "testPrefersSentenceBoundariesWithinALongParagraph"
+        },
+        {
+          "line" : 56,
+          "name" : "testCapturesActiveHeader"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 58,
+      "name" : "TextChunkerTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/TextChunkerTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "TextChunkerTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testCopiesBundledSkillsAndRulesIntoVaultSidecar"
+        },
+        {
+          "line" : 20,
+          "name" : "testDoesNotOverwriteUserEditedSkill"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 27,
+      "name" : "VaultInitializerTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/VaultInitializerTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "VaultInitializerTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 5,
+          "name" : "testWriteThenReadRoundTrip"
+        },
+        {
+          "line" : 43,
+          "name" : "testFilePathFollowsTypeAndIdConvention"
+        },
+        {
+          "line" : 71,
+          "name" : "testReadingMissingNoteThrows"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 76,
+      "name" : "VaultStoreTests.swift",
+      "path" : "Tests\/InfiniteBrainTests\/VaultStoreTests.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 4,
+          "name" : "VaultStoreTests"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 10,
+      "name" : "scratch.swift",
+      "path" : "scratch.swift",
+      "role" : "Module",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 36,
+      "name" : "scratch.swift",
+      "path" : "scratch\/scratch.swift",
+      "role" : "Module",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+        {
+          "line" : 14,
+          "name" : "findBoundaries"
+        },
+        {
+          "line" : 29,
+          "name" : "chunk"
+        }
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 71,
+      "name" : "test_chunker.swift",
+      "path" : "scratch\/test_chunker.swift",
+      "role" : "Test",
+      "types" : [
+        {
+          "line" : 3,
+          "name" : "Chunk"
+        },
+        {
+          "line" : 8,
+          "name" : "SemanticBoundary"
+        }
+      ],
+      "usedBy" : [
+
+      ]
+    },
+    {
+      "functions" : [
+
+      ],
+      "imports" : [
+
+      ],
+      "language" : "swift",
+      "loc" : 14,
+      "name" : "test_pdf.swift",
+      "path" : "scratch\/test_pdf.swift",
+      "role" : "Test",
+      "types" : [
+
+      ],
+      "usedBy" : [
+
+      ]
+    }
+  ],
+  "summary" : {
+    "totalEdges" : 0,
+    "totalFiles" : 139
+  },
+  "version" : "1.0"
+}

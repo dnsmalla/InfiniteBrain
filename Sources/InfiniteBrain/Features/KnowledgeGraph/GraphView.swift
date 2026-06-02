@@ -1,180 +1,82 @@
 import SwiftUI
 import InfiniteBrainCore
 
+/// Knowledge Graph view — uses the same CGData / CodeGraphCanvas / CGSimulation
+/// infrastructure as the Code Graph so there is one shared canvas renderer.
+/// Vault notes are converted to CGData on load; the underlying notes model
+/// (Note, NodeType, VaultStore) is left unchanged.
 @MainActor
 struct GraphView: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var ingest: IngestViewModel
-    
-    @State private var data: GraphData = .init(nodes: [], edges: [])
-    @State private var selected: GraphNode?
+
+    @State private var cgData:   CGData  = .empty
+    @State private var selected: CGNode? = nil
+    @State private var focused:  CGNode? = nil
     @State private var loading = false
-    @State private var canvasSize: CGSize = .init(width: 800, height: 600)
-    @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
-    
-    @State private var simulation: GraphSimulation?
-    @State private var isSimulating = true
-    @State private var currentBacklinks: [GraphNode] = []
     @State private var store: VaultStore?
-    @State private var lastSaveTime: Date = .distantPast
-    @State private var notesCache: [Note] = []
+    @State private var notes: [Note] = []
+    @State private var currentBacklinks: [Note] = []
 
     var body: some View {
-            ZStack(alignment: .topTrailing) {
-                GeometryReader { geo in
-                    TimelineView(.animation) { timeline in
-                        Canvas { ctx, size in
-                            if isSimulating {
-                                simulation?.step(canvasSize: size)
-                                if Date().timeIntervalSince(lastSaveTime) > 2.0 {
-                                    persistPositions()
-                                }
-                            }
-                            
-                            let viewport = CGRect(x: -offset.width / scale, y: -offset.height / scale,
-                                                  width: size.width / scale, height: size.height / scale)
-                            let visibleRect = viewport.insetBy(dx: -40, dy: -40)
-
-                            ctx.concatenate(CGAffineTransform(translationX: offset.width, y: offset.height))
-                            ctx.concatenate(CGAffineTransform(scaleX: scale, y: scale))
-                            
-                            if let sim = simulation {
-                                let nodePositions = Dictionary(uniqueKeysWithValues: sim.nodes.map { ($0.id, $0.position) })
-                                
-                                // Edges
-                                for e in sim.edges {
-                                    guard let p1 = nodePositions[e.fromId], let p2 = nodePositions[e.toId] else { continue }
-                                    if !visibleRect.contains(p1) && !visibleRect.contains(p2) { continue }
-                                    var path = Path()
-                                    path.move(to: p1)
-                                    path.addLine(to: p2)
-                                    
-                                    // Sleek edges
-                                    let isRelated = (e.fromId == selected?.id || e.toId == selected?.id)
-                                    let opacity = isRelated ? 1.0 : 0.6
-                                    let width = (isRelated ? 3.0 : 1.5) / max(scale, 0.5)
-                                    
-                                    ctx.stroke(path, with: .color(.primary.opacity(opacity)), lineWidth: width)
-                                }
-                                
-                                // Nodes with Glow
-                                for n in sim.nodes {
-                                    if !visibleRect.contains(n.position) { continue }
-                                    guard let full = data.nodes.first(where: { $0.id == n.id }) else { continue }
-                                    
-                                    let isSelected = n.id == selected?.id
-                                    // Nodes stay visible even when zoomed out:
-                                    let baseR: CGFloat = isSelected ? 12 : 8
-                                    let r = max(baseR, baseR / (scale * 0.5)) 
-                                    
-                                    let rect = CGRect(x: n.position.x - r, y: n.position.y - r, width: r*2, height: r*2)
-                                    let color = NodePalette.color(for: full.type)
-                                    
-                                    // Draw Node Core (Solid, high visibility)
-                                    ctx.addFilter(.blur(radius: 0))
-                                    let nodePath = Path(ellipseIn: rect)
-                                    ctx.fill(nodePath, with: .color(color))
-                                    
-                                    // Stronger outline for definition
-                                    ctx.stroke(nodePath, with: .color(.black.opacity(0.4)), lineWidth: 2.0 / max(scale, 0.5))
-                                    
-                                    if isSelected {
-                                        let ring = Path(ellipseIn: rect.insetBy(dx: -6/scale, dy: -6/scale))
-                                        ctx.stroke(ring, with: .color(AppPalette.brand), lineWidth: 4.0 / max(scale, 0.5))
-                                    }
-                                }
-                            }
-                        }
-                        .background(Color(nsColor: .windowBackgroundColor))
-                        .gesture(
-                            SimultaneousGesture(
-                                MagnificationGesture()
-                                    .onChanged { val in
-                                        let delta = val / lastScale
-                                        lastScale = val
-                                        scale *= delta
-                                    }
-                                    .onEnded { _ in lastScale = 1.0 },
-                                DragGesture()
-                                    .onChanged { val in
-                                        let delta = CGSize(width: val.translation.width - lastOffset.width,
-                                                           height: val.translation.height - lastOffset.height)
-                                        lastOffset = val.translation
-                                        offset = CGSize(width: offset.width + delta.width,
-                                                        height: offset.height + delta.height)
-                                    }
-                                    .onEnded { _ in lastOffset = .zero }
-                            )
-                        )
-                        .gesture(
-                            SpatialTapGesture()
-                                .onEnded { event in
-                                    let transformed = CGPoint(
-                                        x: (event.location.x - offset.width) / scale,
-                                        y: (event.location.y - offset.height) / scale
-                                    )
-                                    selected = hitTest(transformed)
-                                }
-                        )
-                    }
-                    .onAppear {
-                        canvasSize = geo.size
-                        Task { await reload() }
-                    }
-                    .onChange(of: geo.size) { _, new in
-                        canvasSize = new
-                    }
-                }
-                
-                VStack(alignment: .trailing, spacing: 12) {
-                    toolbarContent
-                    sidebar
-                }
-                .padding(24)
+        ZStack(alignment: .topTrailing) {
+            // Canvas
+            if cgData.nodes.isEmpty {
+                emptyState
+            } else {
+                CodeGraphCanvas(
+                    data: cgData,
+                    selected: $selected,
+                    focusedNode: $focused,
+                    showLabels: true,
+                    onNodeOpen: nil
+                )
             }
-        .onChange(of: ingest.lastResult) { _, _ in
-            Task { await reload() }
+
+            // Toolbar + sidebar overlay
+            VStack(alignment: .trailing, spacing: 12) {
+                toolbar
+                sidebar
+            }
+            .padding(24)
         }
-        .onChange(of: selected) { _, newValue in
-            updateBacklinks(for: newValue)
-        }
+        .onAppear { Task { await reload() } }
+        .onChange(of: ingest.lastResult) { _, _ in Task { await reload() } }
+        .onChange(of: selected) { _, new in updateBacklinks(for: new) }
     }
 
-    // MARK: - Components
+    // MARK: - Empty state
 
-    private var toolbarContent: some View {
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            if loading {
+                ProgressView("Loading graph…")
+            } else {
+                Image(systemName: "circle.hexagongrid.fill")
+                    .font(.system(size: 48)).foregroundStyle(.secondary)
+                Text("No knowledge graph yet").font(.title3)
+                Text("Ingest notes to build the graph.")
+                    .font(.body).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    // MARK: - Toolbar
+
+    private var toolbar: some View {
         HStack(spacing: 4) {
-            Button {
-                isSimulating.toggle()
-            } label: {
-                Image(systemName: isSimulating ? "pause.fill" : "play.fill")
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            
-            Divider().frame(height: 16)
-            
-            Button {
-                scale = 1.0
-                offset = .zero
-            } label: {
-                Image(systemName: "scope")
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            
             Button(action: { Task { await reload() } }) {
                 Image(systemName: "arrow.clockwise")
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
-            
+            .help("Reload graph")
+
             Divider().frame(height: 16)
-            
-            Text("\(data.nodes.count) Nodes")
+
+            Text("\(cgData.nodes.count) Nodes")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .padding(.horizontal, 8)
         }
@@ -183,31 +85,38 @@ struct GraphView: View {
         .overlay(Capsule().stroke(AppPalette.border, lineWidth: 1))
     }
 
+    // MARK: - Sidebar
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if let s = selected {
-                Text(s.title)
+            if let s = selected,
+               let note = notes.first(where: { $0.id == s.id }) {
+                // Selected node info
+                Text(note.title)
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
-                Text(s.summary)
+                Text(note.summary)
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 8)
-                
+
                 if !currentBacklinks.isEmpty {
                     Divider()
-                    Text("Semantic Backlinks")
+                    Text("Backlinks")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(.tertiary)
                         .textCase(.uppercase)
-                    
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
-                            ForEach(currentBacklinks) { bl in
-                                Button(action: { selected = bl }) {
+                            ForEach(currentBacklinks) { link in
+                                Button {
+                                    selected = cgData.nodes.first { $0.id == link.id }
+                                } label: {
                                     HStack {
-                                        Circle().fill(NodePalette.color(for: bl.type)).frame(width: 8, height: 8)
-                                        Text(bl.title).font(.caption).lineLimit(2)
+                                        Circle()
+                                            .fill(CGPalette.color(for: CGNodeKind.from(link.type.rawValue)))
+                                            .frame(width: 8, height: 8)
+                                        Text(link.title).font(.caption).lineLimit(2)
                                     }
                                 }
                                 .buttonStyle(.plain)
@@ -216,14 +125,17 @@ struct GraphView: View {
                     }
                 }
             } else {
-                Text("Knowledge Legend")
+                // Legend
+                Text("Knowledge Graph")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                 Divider()
-                ForEach(NodeType.allCases, id: \.self) { t in
+                ForEach(CGNodeKind.knowledgeGraphKinds, id: \.self) { kind in
                     HStack {
-                        Circle().fill(NodePalette.color(for: t)).frame(width: 10, height: 10)
-                            .shadow(color: NodePalette.color(for: t).opacity(0.8), radius: 3)
-                        Text(t.rawValue.replacingOccurrences(of: "-", with: " ").capitalized)
+                        Circle()
+                            .fill(CGPalette.color(for: kind))
+                            .frame(width: 10, height: 10)
+                            .shadow(color: CGPalette.color(for: kind).opacity(0.6), radius: 3)
+                        Text(kind.displayName)
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.secondary)
                     }
@@ -236,83 +148,63 @@ struct GraphView: View {
         .frame(width: 260)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppPalette.border, lineWidth: 1)
+        )
         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
     }
 
-    // MARK: - Logic
+    // MARK: - Data loading
 
     private func reload() async {
         guard let root = settings.vaultPath else { return }
-        let vault = Vault(root: root)
         loading = true
         defer { loading = false }
-        
+
+        let vault    = Vault(root: root)
         let newStore = VaultStore(vault: vault)
-        self.store = newStore
-        
-        if await newStore.metadataIndex.load() {
-            let entries = await newStore.metadataIndex.allEntries()
-            if !entries.isEmpty {
-                let graphNodes = entries.map { e in
-                    GraphNode(id: e.id, title: e.title, type: NodeType(rawValue: e.type), summary: e.summary, position: .zero)
-                }
-                let graphEdges = entries.flatMap { e in
-                    e.edges.map { GraphEdge(fromId: e.id, toId: $0.targetId, type: EdgeType(rawValue: $0.type) ?? .relatedTo) }
-                }
-                data = GraphData(nodes: graphNodes.map { n in
-                    var n2 = n
-                    if let entry = entries.first(where: { $0.id == n.id }), entry.x != 0 || entry.y != 0 {
-                        n2.position = CGPoint(x: entry.x, y: entry.y)
-                    } else {
-                        n2.position = CGPoint(x: CGFloat.random(in: 0...canvasSize.width), y: CGFloat.random(in: 0...canvasSize.height))
-                    }
-                    return n2
-                }, edges: graphEdges)
-                simulation = GraphSimulation(data: data)
+        self.store   = newStore
+
+        guard await newStore.metadataIndex.load() else { return }
+        let loaded = (try? await newStore.allNotes()) ?? []
+        guard !loaded.isEmpty else { return }
+        self.notes = loaded
+
+        // Convert vault Notes → CGData
+        let noteIds = Set(loaded.map(\.id))
+        let nodes: [CGNode] = loaded.map { n in
+            CGNode(id: n.id, title: n.title,
+                   kind: CGNodeKind.from(n.type.rawValue),
+                   position: .zero)
+        }
+        let edges: [CGEdge] = loaded.flatMap { n in
+            n.edges.compactMap { e -> CGEdge? in
+                guard noteIds.contains(e.target) else { return nil }
+                return CGEdge(fromId: n.id, toId: e.target, kind: .relatedTo)
             }
         }
+        let raw = CGData(nodes: nodes, edges: edges)
 
-        let notes = (try? await newStore.allNotes()) ?? []
-        notesCache = notes
-        let newData = GraphLayout.compute(notes: notes, canvasSize: canvasSize)
-        data = newData
-        simulation = GraphSimulation(data: newData)
+        // Circular initial positions then physics settle (same pipeline as Code Graph)
+        let initial = CodeGraphLayout.compute(raw, canvasSize: CGSize(width: 1200, height: 900))
+        let settled = await Task.detached(priority: .userInitiated) {
+            let sim = CGSimulation(data: initial)
+            sim.settle(maxIterations: 200)
+            return sim.appliedData(to: initial)
+        }.value
+
+        self.cgData = settled
         try? await newStore.saveMetadata()
     }
 
-    private func persistPositions() {
-        guard let store = store, let sim = simulation else { return }
-        let nodesToSave = sim.nodes
-        Task {
-            for n in nodesToSave {
-                await store.metadataIndex.updatePosition(id: n.id, x: Double(n.position.x), y: Double(n.position.y))
-            }
-            try? await store.saveMetadata()
-        }
-    }
-
-    private func hitTest(_ loc: CGPoint) -> GraphNode? {
-        guard let sim = simulation else { return nil }
-        let nearest = sim.nodes.min { a, b in
-            dist(a.position, loc) < dist(b.position, loc)
-        }
-        guard let n = nearest, dist(n.position, loc) < 15 else { return nil }
-        return data.nodes.first(where: { $0.id == n.id })
-    }
-
-    private func updateBacklinks(for node: GraphNode?) {
+    private func updateBacklinks(for node: CGNode?) {
         guard let s = node, let store = store else {
-            currentBacklinks = []
-            return
+            currentBacklinks = []; return
         }
         Task {
             let ids = await store.metadataIndex.getBacklinks(for: s.id)
-            currentBacklinks = data.nodes.filter { ids.contains($0.id) }
+            currentBacklinks = notes.filter { ids.contains($0.id) }
         }
-    }
-
-    private func dist(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
-        sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))
     }
 }

@@ -50,6 +50,42 @@ public extension CGNodeKind {
         case .other:          return "Other"
         }
     }
+
+    /// Map a vault `NodeType` raw value to the matching `CGNodeKind`.
+    /// Allows the Knowledge Graph to share the same canvas and palette as
+    /// the Code Graph without changing the underlying notes data model.
+    static func from(_ rawValue: String) -> CGNodeKind {
+        switch rawValue {
+        case "decision":    return .noteDecision
+        case "concept":     return .noteConcept
+        case "question":    return .noteQuestion
+        case "task":        return .noteTask
+        case "hypothesis":  return .noteHypothesis
+        case "fact":        return .noteFact
+        case "source":      return .noteSource
+        case "playbook":    return .notePlaybook
+        case "event":       return .noteEvent
+        case "pillar":      return .domain
+        case "pattern":     return .notePlaybook
+        case "bookmark":    return .noteSource
+        case "note":        return .memoryChunk
+        case "contact":     return .entity
+        case "reference":   return .noteSource
+        case "custom":      return .other
+        case "code_file":   return .file
+        case "code_symbol": return .symbol
+        case "code_module": return .module
+        case "doc_page":    return .docPage
+        default:            return .other
+        }
+    }
+
+    /// Kinds shown in the Knowledge Graph legend (vault note types only).
+    static let knowledgeGraphKinds: [CGNodeKind] = [
+        .domain, .noteDecision, .noteConcept, .noteQuestion,
+        .noteTask, .noteHypothesis, .noteFact, .noteSource,
+        .notePlaybook, .noteEvent, .memoryChunk, .entity, .other
+    ]
 }
 
 public enum CGEdgeKind: String, Sendable, Hashable {
