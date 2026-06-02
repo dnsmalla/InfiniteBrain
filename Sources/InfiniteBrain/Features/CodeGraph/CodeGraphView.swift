@@ -206,8 +206,8 @@ struct CodeGraphView: View {
                 Divider()
                 detailPanel
                     .frame(minHeight: 120,
-                           idealHeight: selectedNode?.kind == .docPage ? 340 : 180,
-                           maxHeight:   selectedNode?.kind == .docPage ? 400 : 200)
+                           idealHeight: noteForSelected != nil ? 340 : 180,
+                           maxHeight:   noteForSelected != nil ? 400 : 200)
             }
         }
         .background(Color(NSColor.windowBackgroundColor))
@@ -305,26 +305,14 @@ struct CodeGraphView: View {
                 }
             }
             Divider()
-            // Generated note: show its auto-generated markdown content.
-            // Repo .md file: read from disk.
-            // Code node: show connectivity summary.
-            if node.kind == .docPage {
-                let content: String = {
-                    if let cached = node.metadata["note_content"] { return cached }
-                    if let urlStr = node.metadata["fileURL"],
-                       let url = URL(string: urlStr),
-                       let text = try? String(contentsOf: url, encoding: .utf8) { return text }
-                    return ""
-                }()
-                if content.isEmpty {
-                    Text("No content.").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    ScrollView {
-                        Text(content)
-                            .font(.system(size: 11, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+            // Priority: generated note content (for both code nodes and explicit note nodes).
+            // Falls back to connectivity summary when no note exists.
+            if let content = noteForSelected, !content.isEmpty {
+                ScrollView {
+                    Text(content)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
                 Text(detailBodyForNode(node))
@@ -347,6 +335,24 @@ struct CodeGraphView: View {
         if let lang = node.metadata["language"] { parts.append("lang: \(lang)") }
         if let loc  = node.metadata["loc"]      { parts.append("\(loc) lines") }
         return parts.isEmpty ? "No additional details." : parts.joined(separator: " · ")
+    }
+
+    /// The note content to show in the detail panel for the currently selected node.
+    /// For code file/symbol nodes: look up the matching generated note via source_file.
+    /// For note nodes themselves: use their cached note_content directly.
+    private var noteForSelected: String? {
+        guard let node = selectedNode else { return nil }
+        // Note node selected directly (from panel or canvas)
+        if let cached = node.metadata["note_content"] { return cached }
+        // Code file or symbol node — find its note via source_file path
+        if let srcPath = node.metadata["source_file"] {
+            // source_file on a code node is like "Sources/.../Foo.swift"
+            let noteId = "note:\(srcPath)"
+            if let noteNode = fullData.nodes.first(where: { $0.id == noteId }) {
+                return noteNode.metadata["note_content"]
+            }
+        }
+        return nil
     }
 
     // MARK: - Expanded overlay
