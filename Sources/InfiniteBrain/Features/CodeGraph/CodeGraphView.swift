@@ -450,13 +450,28 @@ struct CodeGraphView: View {
     }
 
     private func openNode(_ node: CGNode) {
-        guard let urlString = node.metadata["fileURL"],
-              let fileURL   = URL(string: urlString),
-              let root      = targetFolder else { return }
-        let rootPath = root.standardizedFileURL.path
-        let filePath = fileURL.standardizedFileURL.path
-        guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
-        NSWorkspace.shared.open(fileURL)
+        guard let urlString = node.metadata["fileURL"] else { return }
+
+        // Construct a reliable file URL — absoluteString round-trips cleanly on
+        // plain paths, but fall back to fileURLWithPath for any edge cases.
+        let fileURL: URL
+        if urlString.hasPrefix("file://"), let u = URL(string: urlString) {
+            fileURL = u
+        } else {
+            fileURL = URL(fileURLWithPath: urlString)
+        }
+
+        // Security: only open files under the selected folder.
+        if let root = targetFolder {
+            let rootPath = root.standardizedFileURL.path
+            let filePath = fileURL.standardizedFileURL.path
+            guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
+        }
+
+        // Try the default app; if no handler is registered, reveal in Finder.
+        if !NSWorkspace.shared.open(fileURL) {
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+        }
     }
 
     // Minimal Codable type used just for cache metadata serialisation.
