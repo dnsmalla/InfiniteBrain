@@ -214,35 +214,65 @@ struct CodeGraphView: View {
     }
 
     private var canvasToolbar: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "chevron.left.forwardslash.chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AppPalette.brand)
-            Text("Code Graph").font(.callout.weight(.semibold))
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppPalette.brand)
+                Text("Code Graph").font(.callout.weight(.semibold))
 
-            if !fullData.nodes.isEmpty {
-                Divider().frame(height: 14)
-                Toggle(isOn: $showSymbols) {
-                    Label("Symbols", systemImage: showSymbols ? "function" : "doc")
-                        .font(.caption)
+                if !fullData.nodes.isEmpty {
+                    Divider().frame(height: 14)
+                    Toggle(isOn: $showSymbols) {
+                        Label("Symbols", systemImage: showSymbols ? "function" : "doc")
+                            .font(.caption)
+                    }
+                    .toggleStyle(.switch).controlSize(.small)
+                    Divider().frame(height: 14)
+                    Text("\(displayData.nodes.count) / \(fullData.nodes.count) nodes")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .toggleStyle(.switch).controlSize(.small)
-                Divider().frame(height: 14)
-                Text("\(displayData.nodes.count) / \(fullData.nodes.count) nodes")
-                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if !displayData.nodes.isEmpty {
+                    Button { graphExpanded = true } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help("Expand graph to full window")
+                }
             }
-            Spacer()
+            .padding(.horizontal, 16).padding(.vertical, 8)
+
+            // Color legend — only shown when there is a graph
             if !displayData.nodes.isEmpty {
-                Button { graphExpanded = true } label: {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
-                .help("Expand graph to full window")
+                Divider()
+                colorLegend
+                    .padding(.horizontal, 16).padding(.vertical, 6)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 8)
         .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    /// Compact inline legend showing every node kind present in displayData.
+    private var colorLegend: some View {
+        let presentKinds = Array(Set(displayData.nodes.map(\.kind)))
+            .sorted { $0.rawValue < $1.rawValue }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(presentKinds, id: \.self) { kind in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(CGPalette.color(for: kind))
+                            .frame(width: 8, height: 8)
+                        Text(kind.displayName)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .frame(height: 18)
     }
 
     // MARK: - Detail panel
