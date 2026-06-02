@@ -40,10 +40,9 @@ public enum StructureGraphBuilder {
                 let id = "\(prefix):\(f.path):\(sym.name)"
                 guard !nodeIds.contains(id) else { continue }
                 nodeIds.insert(id)
-                nodes.append(CGNode(
-                    id: id, title: sym.name, kind: kind, position: .zero,
-                    metadata: ["source_file": f.path, "fileURL": abs,
-                               "line": "L\(sym.line)"]))
+                var symMeta: [String: String] = ["source_file": f.path, "fileURL": abs, "line": "L\(sym.line)"]
+                if let decl = sym.declaration { symMeta["declaration"] = decl }
+                nodes.append(CGNode(id: id, title: sym.name, kind: kind, position: .zero, metadata: symMeta))
                 edges.append(CGEdge(fromId: fileId, toId: id, kind: .contains))
             }
         }

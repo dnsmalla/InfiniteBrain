@@ -13,8 +13,10 @@ public struct ScanResult: Sendable {
         public let name: String
         public let kind: String
         public let line: Int
-        public init(name: String, kind: String, line: Int) {
-            self.name = name; self.kind = kind; self.line = line
+        /// Trimmed source declaration (everything up to `{` or end of line).
+        public let declaration: String?
+        public init(name: String, kind: String, line: Int, declaration: String? = nil) {
+            self.name = name; self.kind = kind; self.line = line; self.declaration = declaration
         }
     }
 

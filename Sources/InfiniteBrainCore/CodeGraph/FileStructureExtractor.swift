@@ -70,26 +70,36 @@ public final class FileStructureExtractor {
     }
 
     /// Extract a defined symbol from a single line, or nil. Line number set to 0;
-    /// caller fills in actual line number.
+    /// caller fills in actual line number. `declaration` is the trimmed signature
+    /// up to (but not including) the opening `{`.
     public static func symbol(fromLine line: String, language: String) -> ScanResult.Symbol? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+        /// Name of the first identifier after `keyword `.
         func nameAfter(_ keyword: String) -> String? {
             guard let r = trimmed.range(of: keyword + " ") else { return nil }
             let rest = trimmed[r.upperBound...]
             let name = rest.prefix { $0.isLetter || $0.isNumber || $0 == "_" }
             return name.isEmpty ? nil : String(name)
         }
+
+        /// Signature text: trimmed up to the first `{`, or the whole trimmed line.
+        func decl() -> String {
+            (trimmed.components(separatedBy: "{").first ?? trimmed)
+                .trimmingCharacters(in: .whitespaces)
+        }
+
         switch language {
         case "typescript", "javascript":
-            if let n = nameAfter("function") { return .init(name: n, kind: "function", line: 0) }
-            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0) }
+            if let n = nameAfter("function") { return .init(name: n, kind: "function", line: 0, declaration: decl()) }
+            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
             return nil
         case "swift":
-            if let n = nameAfter("func")     { return .init(name: n, kind: "function", line: 0) }
-            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0) }
-            if let n = nameAfter("struct")   { return .init(name: n, kind: "class",    line: 0) }
-            if let n = nameAfter("enum")     { return .init(name: n, kind: "class",    line: 0) }
-            if let n = nameAfter("protocol") { return .init(name: n, kind: "class",    line: 0) }
+            if let n = nameAfter("func")     { return .init(name: n, kind: "function", line: 0, declaration: decl()) }
+            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
+            if let n = nameAfter("struct")   { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
+            if let n = nameAfter("enum")     { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
+            if let n = nameAfter("protocol") { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
             return nil
         default:
             return nil
