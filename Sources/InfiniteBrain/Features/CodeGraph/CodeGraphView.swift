@@ -222,7 +222,9 @@ struct CodeGraphView: View {
             if !displayData.nodes.isEmpty {
                 Divider()
                 detailPanel
-                    .frame(minHeight: 120, idealHeight: 180, maxHeight: 200)
+                    .frame(minHeight: 120,
+                           idealHeight: selectedNode?.kind == .docPage ? 340 : 180,
+                           maxHeight:   selectedNode?.kind == .docPage ? 400 : 200)
             }
         }
         .background(Color(NSColor.windowBackgroundColor))
@@ -320,10 +322,23 @@ struct CodeGraphView: View {
                 }
             }
             Divider()
-            Text(detailBodyForNode(node))
-                .font(.caption).foregroundStyle(.secondary)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // For .md files show the file content; for code nodes show connectivity.
+            if node.kind == .docPage,
+               let urlStr = node.metadata["fileURL"],
+               let url = URL(string: urlStr),
+               let text = try? String(contentsOf: url, encoding: .utf8) {
+                ScrollView {
+                    Text((try? AttributedString(markdown: text)) ?? AttributedString(text))
+                        .font(.system(.caption))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Text(detailBodyForNode(node))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

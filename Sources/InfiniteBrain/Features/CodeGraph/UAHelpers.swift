@@ -23,7 +23,7 @@ enum UAHelpers {
         for node in g.nodes {
             guard let source = node.metadata["source_file"], !source.isEmpty else { continue }
             if isPanelNoise(node) { continue }
-            if node.kind == .file {
+            if node.kind == .file || node.kind == .docPage {
                 fileHeaderByPath[source] = node
             } else if !isHeadingChunk(node) {
                 bySource[source, default: []].append(CodeSymbol(node: node))
@@ -43,7 +43,9 @@ enum UAHelpers {
                 let key = "\(sym.node.title)|\(sym.node.metadata["line"] ?? "")"
                 return seen.insert(key).inserted
             }
-            guard !syms.isEmpty else { return nil }
+            // Always show .md files even with no headings; skip code files with no symbols.
+            let isDoc = fileHeaderByPath[path]?.kind == .docPage
+            guard !syms.isEmpty || isDoc else { return nil }
 
             let basename = (path as NSString).lastPathComponent
             let title    = (basenameCounts[basename] ?? 0) > 1 ? path : basename

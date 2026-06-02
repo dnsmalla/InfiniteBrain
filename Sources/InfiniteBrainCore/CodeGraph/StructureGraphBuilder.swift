@@ -12,13 +12,14 @@ public enum StructureGraphBuilder {
 
         // File nodes.
         for f in scan.files {
-            let id  = "file:\(f.path)"
-            let abs = repoRoot.appendingPathComponent(f.path).absoluteString
+            let id   = "file:\(f.path)"
+            let abs  = repoRoot.appendingPathComponent(f.path).absoluteString
+            let kind: CGNodeKind = f.language == "markdown" ? .docPage : .file
             nodeIds.insert(id)
             nodes.append(CGNode(
                 id: id,
                 title: (f.path as NSString).lastPathComponent,
-                kind: .file,
+                kind: kind,
                 position: .zero,
                 metadata: ["source_file": f.path, "fileURL": abs,
                            "language": f.language, "loc": String(f.loc)]))
@@ -29,8 +30,13 @@ public enum StructureGraphBuilder {
             let fileId = "file:\(f.path)"
             let abs    = repoRoot.appendingPathComponent(f.path).absoluteString
             for sym in scan.symbols[f.path] ?? [] {
-                let kind: CGNodeKind = sym.kind == "class" ? .classType : .function
-                let prefix = sym.kind == "class" ? "class" : "function"
+                let kind: CGNodeKind
+                let prefix: String
+                switch sym.kind {
+                case "class":   kind = .classType; prefix = "class"
+                case "heading": kind = .docPage;   prefix = "heading"
+                default:        kind = .function;  prefix = "function"
+                }
                 let id = "\(prefix):\(f.path):\(sym.name)"
                 guard !nodeIds.contains(id) else { continue }
                 nodeIds.insert(id)

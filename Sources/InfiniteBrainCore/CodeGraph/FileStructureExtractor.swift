@@ -30,15 +30,26 @@ public final class FileStructureExtractor {
 
     // MARK: - Pure helpers (public for tests)
 
-    public static let codeExtensions: Set<String> = ["ts", "tsx", "js", "jsx", "mjs", "cjs", "swift"]
+    public static let codeExtensions: Set<String> = ["ts", "tsx", "js", "jsx", "mjs", "cjs", "swift", "md"]
 
     public static func language(for path: String) -> String {
         switch (path as NSString).pathExtension.lowercased() {
         case "ts", "tsx":                return "typescript"
         case "js", "jsx", "mjs", "cjs": return "javascript"
         case "swift":                    return "swift"
+        case "md":                       return "markdown"
         default:                         return "other"
         }
+    }
+
+    /// Extract a markdown heading (## or ###) as a symbol, or nil.
+    public static func markdownHeading(fromLine line: String, lineNumber: Int) -> ScanResult.Symbol? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("## ") || trimmed.hasPrefix("### ") else { return nil }
+        let name = trimmed.drop(while: { $0 == "#" || $0 == " " })
+            .trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return nil }
+        return ScanResult.Symbol(name: name, kind: "heading", line: lineNumber)
     }
 
     /// Extract the import specifier from a single source line, or nil.
@@ -160,12 +171,18 @@ public final class FileStructureExtractor {
                                              omittingEmptySubsequences: false).enumerated() {
                 let line = String(raw)
                 if !line.trimmingCharacters(in: .whitespaces).isEmpty { loc += 1 }
-                if let spec = Self.importSpecifier(fromLine: line, language: lang) {
-                    imports.append(RawImport(module: spec))
-                }
-                if var sym = Self.symbol(fromLine: line, language: lang) {
-                    sym = ScanResult.Symbol(name: sym.name, kind: sym.kind, line: idx + 1)
-                    symbols.append(sym)
+                if lang == "markdown" {
+                    if let sym = Self.markdownHeading(fromLine: line, lineNumber: idx + 1) {
+                        symbols.append(sym)
+                    }
+                } else {
+                    if let spec = Self.importSpecifier(fromLine: line, language: lang) {
+                        imports.append(RawImport(module: spec))
+                    }
+                    if var sym = Self.symbol(fromLine: line, language: lang) {
+                        sym = ScanResult.Symbol(name: sym.name, kind: sym.kind, line: idx + 1)
+                        symbols.append(sym)
+                    }
                 }
             }
             return RawFileStructure(path: path, language: lang, loc: loc,
