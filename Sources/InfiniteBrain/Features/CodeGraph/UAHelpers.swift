@@ -58,6 +58,16 @@ enum UAHelpers {
         }
     }
 
+    /// Returns one artifact per generated note node (docPage nodes that have
+    /// `source_code_file` metadata, meaning they were produced by CodeNoteWriter).
+    /// Sorted by title for stable display order.
+    static func collectNoteArtifacts(_ g: CGData) -> [CodeArtifact] {
+        g.nodes
+            .filter { $0.kind == .docPage && $0.metadata["source_code_file"] != nil }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .map { node in CodeArtifact(fileNode: node, symbols: []) }
+    }
+
     static func isPanelNoise(_ node: CGNode) -> Bool {
         let t = node.title
         if t.hasPrefix("code:") { return true }

@@ -14,7 +14,7 @@ struct CodeGraphView: View {
     @State private var graphExpanded: Bool     = false
     @State private var showControlsPanel: Bool = true
     @State private var showItemsPanel:    Bool = true
-    @State private var codeArtifacts: [UAHelpers.CodeArtifact] = []
+    @State private var noteArtifacts: [UAHelpers.CodeArtifact] = []
 
     private let store = UAStore()
 
@@ -131,26 +131,26 @@ struct CodeGraphView: View {
         }
     }
 
-    // MARK: - Panel 2: Files & Symbols
+    // MARK: - Panel 2: Generated Notes
 
     private var itemsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("FILES & SYMBOLS")
+                Text("GENERATED NOTES")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                if !codeArtifacts.isEmpty {
-                    Text("\(codeArtifacts.count) files")
+                if !noteArtifacts.isEmpty {
+                    Text("\(noteArtifacts.count) notes")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
             Divider()
 
-            if codeArtifacts.isEmpty {
+            if noteArtifacts.isEmpty {
                 VStack {
                     Spacer()
-                    Text("Generate graph to populate.")
+                    Text("Generate graph to create notes.")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 16)
@@ -159,34 +159,17 @@ struct CodeGraphView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List(selection: nodeSelectionBinding) {
-                    ForEach(codeArtifacts) { artifact in
-                        Section {
-                            ForEach(artifact.symbols) { sym in
-                                HStack(spacing: 8) {
-                                    Circle()
-                                        .fill(CGPalette.color(for: sym.node.kind))
-                                        .frame(width: 7, height: 7)
-                                    Text(sym.node.title)
-                                        .font(.system(.caption, design: .monospaced))
-                                        .lineLimit(1).truncationMode(.middle)
-                                    Spacer()
-                                    if let line = sym.node.metadata["line"] {
-                                        Text(line)
-                                            .font(.system(.caption, design: .monospaced))
-                                            .foregroundStyle(.secondary.opacity(0.7))
-                                    }
-                                }
-                                .tag(sym.node.id)
-                            }
-                        } header: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "doc.text")
-                                    .font(.system(size: 10)).foregroundStyle(.secondary)
-                                Text(artifact.fileNode.title)
-                                    .font(.callout.weight(.semibold))
-                                    .tag(artifact.fileNode.id)
-                            }
+                    ForEach(noteArtifacts) { artifact in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(CGPalette.color(for: .docPage))
+                                .frame(width: 7, height: 7)
+                            Text(artifact.fileNode.title)
+                                .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1).truncationMode(.middle)
+                            Spacer()
                         }
+                        .tag(artifact.fileNode.id)
                     }
                 }
                 .listStyle(.sidebar)
@@ -322,16 +305,26 @@ struct CodeGraphView: View {
                 }
             }
             Divider()
-            // For .md files show the file content; for code nodes show connectivity.
-            if node.kind == .docPage,
-               let urlStr = node.metadata["fileURL"],
-               let url = URL(string: urlStr),
-               let text = try? String(contentsOf: url, encoding: .utf8) {
-                ScrollView {
-                    Text((try? AttributedString(markdown: text)) ?? AttributedString(text))
-                        .font(.system(.caption))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            // Generated note: show its auto-generated markdown content.
+            // Repo .md file: read from disk.
+            // Code node: show connectivity summary.
+            if node.kind == .docPage {
+                let content: String = {
+                    if let cached = node.metadata["note_content"] { return cached }
+                    if let urlStr = node.metadata["fileURL"],
+                       let url = URL(string: urlStr),
+                       let text = try? String(contentsOf: url, encoding: .utf8) { return text }
+                    return ""
+                }()
+                if content.isEmpty {
+                    Text("No content.").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ScrollView {
+                        Text((try? AttributedString(markdown: content)) ?? AttributedString(content))
+                            .font(.system(.caption))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             } else {
                 Text(detailBodyForNode(node))
@@ -422,45 +415,57 @@ struct CodeGraphView: View {
         guard let target = targetFolder else { return }
         status  = .running
         runTask = Task {
-            do {
-                let scanner = StructureScanner(launcher: SystemProcessLauncher())
-                let scan    = await scanner.scan(repoRoot: target)
-                if Task.isCancelled { self.status = .idle; return }
-                let graph = StructureGraphBuilder.build(scan, repoRoot: target)
-                let laid  = CodeGraphLayout.compute(
-                    graph,
-                    canvasSize: UAHelpers.layoutSize(for: graph.nodes.count))
-                self.selectedNode  = nil
-                self.fullData      = laid
-                self.codeArtifacts = UAHelpers.collectCodeArtifacts(laid)
-                self.status        = .loaded(nodeCount: graph.nodes.count,
-                                             edgeCount: graph.edges.count)
-                if let json = try? JSONEncoder().encode(CachedGraph(nodes: laid.nodes.count,
-                                                                     edges: laid.edges.count)) {
-                    try? store.save(graphJSON: json, for: target,
-                                    nodeCount: graph.nodes.count,
-                                    edgeCount: graph.edges.count, toolVersion: "scan-1.0")
-                }
+            let scanner = StructureScanner(launcher: SystemProcessLauncher())
+            let scan    = await scanner.scan(repoRoot: target)
+            if Task.isCancelled { self.status = .idle; return }
+
+            // Build structural code graph (file + symbol + import edges)
+            let codeGraph = StructureGraphBuilder.build(scan, repoRoot: target)
+
+            // Generate one .md note per code file; returns nodes + writes to disk
+            let noteNodes = CodeNoteWriter.generateNoteNodes(scan: scan, repoRoot: target)
+            let docEdges: [CGEdge] = noteNodes.compactMap { note in
+                guard let src = note.metadata["source_code_file"] else { return nil }
+                return CGEdge(fromId: note.id, toId: "file:\(src)", kind: .documents)
             }
+
+            let combined = CGData(
+                nodes: codeGraph.nodes + noteNodes,
+                edges: codeGraph.edges + docEdges
+            )
+            let laid = CodeGraphLayout.compute(
+                combined,
+                canvasSize: UAHelpers.layoutSize(for: combined.nodes.count))
+
+            self.selectedNode  = nil
+            self.fullData      = laid
+            self.noteArtifacts = UAHelpers.collectNoteArtifacts(laid)
+            self.status        = .loaded(nodeCount: codeGraph.nodes.count,
+                                         edgeCount: codeGraph.edges.count)
         }
     }
 
     private func loadCachedIfAvailable() {
+        // Notes are regenerated on each scan run; nothing to restore from cache.
+        // Just restore the status label if a prior run exists.
         guard let target = targetFolder,
               let meta = store.lastRun(for: target) else { return }
         self.status = .loaded(nodeCount: meta.nodeCount, edgeCount: meta.edgeCount)
     }
 
     private func recomputeDisplayData() {
-        if showSymbols {
-            displayData = fullData
-            return
+        // Canvas shows only code structure — generated notes live in the panel.
+        let showInCanvas: Set<CGNodeKind> = showSymbols
+            ? [.file, .module, .classType, .function]
+            : [.file, .module]
+        // Exclude note nodes (they have source_code_file metadata)
+        let kept    = fullData.nodes.filter {
+            showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
         }
-        let filesOnly: Set<CGNodeKind> = [.file, .module, .docPage]
-        let kept    = fullData.nodes.filter { filesOnly.contains($0.kind) }
         let keptIds = Set(kept.map(\.id))
         let edges   = fullData.edges.filter {
-            keptIds.contains($0.fromId) && keptIds.contains($0.toId) }
+            keptIds.contains($0.fromId) && keptIds.contains($0.toId)
+        }
         displayData = CGData(nodes: kept, edges: edges)
     }
 
