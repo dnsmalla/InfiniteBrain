@@ -468,10 +468,8 @@ struct CodeGraphView: View {
             guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
         }
 
-        // Try the default app; if no handler is registered, reveal in Finder.
-        if !NSWorkspace.shared.open(fileURL) {
-            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
-        }
+        // Reveal + select in Finder — always works immediately.
+        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
     // Minimal Codable type used just for cache metadata serialisation.
