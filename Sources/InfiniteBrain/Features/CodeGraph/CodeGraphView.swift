@@ -4,27 +4,25 @@ import InfiniteBrainCore
 
 @MainActor
 struct CodeGraphView: View {
-    @State private var targetFolder: URL?       = CodeGraphView.defaultFolder()
-    @State private var status:       Status     = .idle
-    @State private var fullData:     CGData     = .empty
-    @State private var displayData:  CGData     = .empty
+    @State private var targetFolder: URL?      = CodeGraphView.defaultFolder()
+    @State private var status:       Status    = .idle
+    @State private var fullData:     CGData    = .empty
+    @State private var displayData:  CGData    = .empty
     @State private var selectedNode: CGNode?
     @State private var runTask:      Task<Void, Never>?
-    @State private var showSymbols:  Bool       = false
-    @State private var graphExpanded: Bool      = false
-    @State private var showControlsPanel: Bool  = true
-    @State private var showItemsPanel:    Bool  = true
+    @State private var showSymbols:  Bool      = false
+    @State private var graphExpanded: Bool     = false
+    @State private var showControlsPanel: Bool = true
+    @State private var showItemsPanel:    Bool = true
     @State private var codeArtifacts: [UAHelpers.CodeArtifact] = []
 
-    private let runner = UARunner()
-    private let store  = UAStore()
+    private let store = UAStore()
 
     enum Status: Equatable {
         case idle
         case running
         case loaded(nodeCount: Int, edgeCount: Int)
         case error(String)
-        case binaryMissing
     }
 
     var body: some View {
@@ -88,7 +86,7 @@ struct CodeGraphView: View {
                 Divider()
 
                 HStack(spacing: 8) {
-                    Button(action: runUA) {
+                    Button(action: runScan) {
                         Label("Generate Graph", systemImage: "play.fill")
                             .font(.callout)
                             .frame(maxWidth: .infinity)
@@ -121,7 +119,7 @@ struct CodeGraphView: View {
         case .running:
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
-                Text("Generating graph…").font(.caption).foregroundStyle(.secondary)
+                Text("Scanning…").font(.caption).foregroundStyle(.secondary)
             }
         case .loaded(let n, let e):
             Label("\(n) nodes · \(e) edges", systemImage: "checkmark.circle.fill")
@@ -130,19 +128,6 @@ struct CodeGraphView: View {
             Label(m, systemImage: "exclamationmark.triangle.fill")
                 .font(.caption).foregroundStyle(.red)
                 .lineLimit(3).truncationMode(.tail)
-        case .binaryMissing:
-            VStack(alignment: .leading, spacing: 6) {
-                Label("understand-anything not found",
-                      systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption.weight(.semibold)).foregroundStyle(.orange)
-                Text(UARunner.installHint)
-                    .font(.caption).foregroundStyle(.secondary)
-                Button("Copy install command") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(UARunner.installHint, forType: .string)
-                }
-                .buttonStyle(.bordered).controlSize(.small)
-            }
         }
     }
 
@@ -346,14 +331,13 @@ struct CodeGraphView: View {
     }
 
     private func detailBodyForNode(_ node: CGNode) -> String {
-        let outgoing = fullData.edges.filter { $0.fromId == node.id }
-        let incoming = fullData.edges.filter { $0.toId   == node.id }
+        let out = fullData.edges.filter { $0.fromId == node.id }
+        let inc = fullData.edges.filter { $0.toId   == node.id }
         var parts: [String] = []
-        if !outgoing.isEmpty { parts.append("→ \(outgoing.count) outgoing") }
-        if !incoming.isEmpty { parts.append("← \(incoming.count) incoming") }
-        if let kind    = node.metadata["ua_type"]  { parts.append("kind: \(kind)") }
-        if let summary = node.metadata["summary"]  { parts.append(summary) }
-        if let tags    = node.metadata["tags"]     { parts.append("tags: \(tags)") }
+        if !out.isEmpty { parts.append("→ \(out.count) outgoing") }
+        if !inc.isEmpty { parts.append("← \(inc.count) incoming") }
+        if let lang = node.metadata["language"] { parts.append("lang: \(lang)") }
+        if let loc  = node.metadata["loc"]      { parts.append("\(loc) lines") }
         return parts.isEmpty ? "No additional details." : parts.joined(separator: " · ")
     }
 
@@ -419,67 +403,37 @@ struct CodeGraphView: View {
         }
     }
 
-    private func runUA() {
+    private func runScan() {
         guard let target = targetFolder else { return }
         status  = .running
         runTask = Task {
-            let result = await runner.run(targetFolder: target)
-            switch result {
-            case .success(let jsonURL):
-                defer { try? FileManager.default.removeItem(at: jsonURL) }
-                do {
-                    let raw    = try Data(contentsOf: jsonURL)
-                    let parsed = try UAParser.parse(data: raw, repoRoot: target)
-                    try? store.save(graphJSON: raw, for: target,
-                                    nodeCount: parsed.nodes.count,
-                                    edgeCount: parsed.edges.count,
-                                    toolVersion: "1.0.0")
-                    let laid = CodeGraphLayout.compute(
-                        parsed,
-                        canvasSize: UAHelpers.layoutSize(for: parsed.nodes.count))
-                    self.selectedNode  = nil
-                    self.fullData      = laid
-                    self.codeArtifacts = UAHelpers.collectCodeArtifacts(laid)
-                    self.status        = .loaded(nodeCount: parsed.nodes.count,
-                                                 edgeCount: parsed.edges.count)
-                } catch let UAError.parseFailed(msg) {
-                    self.status = .error("Parse failed: \(msg)")
-                } catch {
-                    self.status = .error("Parse failed: \(error)")
+            do {
+                let scanner = StructureScanner(launcher: SystemProcessLauncher())
+                let scan    = await scanner.scan(repoRoot: target)
+                if Task.isCancelled { self.status = .idle; return }
+                let graph = StructureGraphBuilder.build(scan, repoRoot: target)
+                let laid  = CodeGraphLayout.compute(
+                    graph,
+                    canvasSize: UAHelpers.layoutSize(for: graph.nodes.count))
+                self.selectedNode  = nil
+                self.fullData      = laid
+                self.codeArtifacts = UAHelpers.collectCodeArtifacts(laid)
+                self.status        = .loaded(nodeCount: graph.nodes.count,
+                                             edgeCount: graph.edges.count)
+                if let json = try? JSONEncoder().encode(CachedGraph(nodes: laid.nodes.count,
+                                                                     edges: laid.edges.count)) {
+                    try? store.save(graphJSON: json, for: target,
+                                    nodeCount: graph.nodes.count,
+                                    edgeCount: graph.edges.count, toolVersion: "scan-1.0")
                 }
-            case .failure(.binaryMissing):
-                self.status = .binaryMissing
-            case .failure(.runFailed(let code, let tail)):
-                self.status = .error("understand-anything exited \(code): \(tail.suffix(160))")
-            case .failure(.noOutput):
-                self.status = .error("understand-anything produced no output.")
-            case .failure(.parseFailed(let m)):
-                self.status = .error("Parse failed: \(m)")
-            case .failure(.unsupportedSchema(let v)):
-                self.status = .error("Unsupported schema v\(v)")
-            case .failure(.nodeVersionTooOld(let v)):
-                self.status = .error("Node.js too old: \(v)")
-            case .failure(.folderNotWritable(let p)):
-                self.status = .error("Folder not writable: \(p)")
-            case .failure(.cancelled):
-                self.status = .idle
             }
         }
     }
 
     private func loadCachedIfAvailable() {
         guard let target = targetFolder,
-              let raw    = store.loadGraphJSON(for: target),
-              let parsed = try? UAParser.parse(data: raw, repoRoot: target) else { return }
-        let laid = CodeGraphLayout.compute(
-            parsed,
-            canvasSize: UAHelpers.layoutSize(for: parsed.nodes.count))
-        self.selectedNode  = nil
-        self.fullData      = laid
-        self.codeArtifacts = UAHelpers.collectCodeArtifacts(laid)
-        if let meta = store.lastRun(for: target) {
-            self.status = .loaded(nodeCount: meta.nodeCount, edgeCount: meta.edgeCount)
-        }
+              let meta = store.lastRun(for: target) else { return }
+        self.status = .loaded(nodeCount: meta.nodeCount, edgeCount: meta.edgeCount)
     }
 
     private func recomputeDisplayData() {
@@ -503,5 +457,11 @@ struct CodeGraphView: View {
         let filePath = fileURL.standardizedFileURL.path
         guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
         NSWorkspace.shared.open(fileURL)
+    }
+
+    // Minimal Codable type used just for cache metadata serialisation.
+    private struct CachedGraph: Codable {
+        let nodes: Int
+        let edges: Int
     }
 }
