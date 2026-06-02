@@ -1,6 +1,6 @@
 import Foundation
 
-/// Minimal seam for unit testing UARunner without spawning processes.
+/// Minimal seam for running and testing external processes.
 public protocol ProcessLauncher: Sendable {
     /// Run an executable and await its exit. Honors Task cancellation by
     /// terminating the child process. Returns (exitCode, stdoutData, stderrData).
