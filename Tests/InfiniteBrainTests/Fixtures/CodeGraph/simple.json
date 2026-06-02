@@ -1,12 +1,14 @@
 {
-  "version": "1",
+  "version": "1.0.0",
   "nodes": [
-    {"id": "n1", "kind": "file",     "name": "App.swift",   "path": "/repo/App.swift"},
-    {"id": "n2", "kind": "class",    "name": "App",         "path": "/repo/App.swift", "line": 10},
-    {"id": "n3", "kind": "function", "name": "main",        "path": "/repo/App.swift", "line": 30}
+    {"id": "file:App.swift", "type": "file",     "name": "App.swift", "filePath": "App.swift"},
+    {"id": "cls:App",        "type": "class",     "name": "App",       "filePath": "App.swift", "lineRange": [10, 50]},
+    {"id": "fn:main",        "type": "function",  "name": "main",      "filePath": "App.swift", "lineRange": [30, 40]}
   ],
   "edges": [
-    {"from": "n2", "to": "n3", "kind": "defines"},
-    {"from": "n1", "to": "n2", "kind": "defines"}
-  ]
+    {"source": "file:App.swift", "target": "cls:App",  "type": "contains"},
+    {"source": "cls:App",        "target": "fn:main",  "type": "contains"}
+  ],
+  "layers": [],
+  "tour": []
 }

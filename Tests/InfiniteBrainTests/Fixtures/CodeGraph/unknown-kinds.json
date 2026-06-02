@@ -1,8 +1,12 @@
-{"version":"1",
- "nodes":[
-   {"id":"a","kind":"unicorn","name":"u","path":"/x.swift"},
-   {"id":"b","kind":"markdown_section","name":"Intro","path":"/README.md"}
- ],
- "edges":[
-   {"from":"a","to":"b","kind":"teleports"}
- ]}
+{
+  "version": "1.0.0",
+  "nodes": [
+    {"id": "a", "type": "unicorn",  "name": "u",       "filePath": "x.swift"},
+    {"id": "b", "type": "function", "name": "doThing", "filePath": "x.swift"}
+  ],
+  "edges": [
+    {"source": "a", "target": "b", "type": "teleports"}
+  ],
+  "layers": [],
+  "tour": []
+}
