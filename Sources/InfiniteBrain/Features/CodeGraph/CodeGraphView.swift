@@ -9,6 +9,7 @@ struct CodeGraphView: View {
     @State private var fullData:     CGData    = .empty
     @State private var displayData:  CGData    = .empty
     @State private var selectedNode: CGNode?
+    @State private var focusedNode: CGNode? = nil
     @State private var runTask:      Task<Void, Never>?
     @State private var showSymbols:  Bool      = false
     @State private var graphExpanded: Bool     = false
@@ -197,6 +198,7 @@ struct CodeGraphView: View {
                 } else {
                     CodeGraphCanvas(data: displayData,
                                     selected: $selectedNode,
+                                    focusedNode: $focusedNode,
                                     onNodeOpen: openNode)
                 }
             }
@@ -390,7 +392,7 @@ struct CodeGraphView: View {
     private var expandedOverlay: some View {
         ZStack(alignment: .topTrailing) {
             Color(NSColor.windowBackgroundColor).ignoresSafeArea()
-            CodeGraphCanvas(data: displayData, selected: $selectedNode, onNodeOpen: openNode)
+            CodeGraphCanvas(data: displayData, selected: $selectedNode, focusedNode: $focusedNode, onNodeOpen: openNode)
             Button { graphExpanded = false } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 22))
@@ -455,29 +457,39 @@ struct CodeGraphView: View {
             let scan    = await scanner.scan(repoRoot: target)
             if Task.isCancelled { self.status = .idle; return }
 
-            // Build structural code graph (file + symbol + import edges)
             let codeGraph = StructureGraphBuilder.build(scan, repoRoot: target)
-
-            // Generate one .md note per code file; returns nodes + writes to disk
             let noteNodes = CodeNoteWriter.generateNoteNodes(scan: scan, repoRoot: target)
             let docEdges: [CGEdge] = noteNodes.compactMap { note in
                 guard let src = note.metadata["source_code_file"] else { return nil }
                 return CGEdge(fromId: note.id, toId: "file:\(src)", kind: .documents)
             }
-
             let combined = CGData(
                 nodes: codeGraph.nodes + noteNodes,
-                edges: codeGraph.edges + docEdges
-            )
-            let laid = CodeGraphLayout.compute(
+                edges: codeGraph.edges + docEdges)
+
+            // Phase 1: circular layout — publish immediately
+            let initial = CodeGraphLayout.compute(
                 combined,
                 canvasSize: UAHelpers.layoutSize(for: combined.nodes.count))
 
             self.selectedNode  = nil
-            self.fullData      = laid
-            self.noteArtifacts = UAHelpers.collectNoteArtifacts(laid)
+            self.focusedNode   = nil
+            self.fullData      = initial
+            self.noteArtifacts = UAHelpers.collectNoteArtifacts(initial)
             self.status        = .loaded(nodeCount: codeGraph.nodes.count,
                                          edgeCount: codeGraph.edges.count)
+
+            // Phase 2: physics simulation — background, then publish settled positions
+            if Task.isCancelled { return }
+            let settled = await Task.detached(priority: .userInitiated) {
+                let sim = CGSimulation(data: initial)
+                sim.settle(maxIterations: 200)
+                return sim.appliedData(to: initial)
+            }.value
+
+            if !Task.isCancelled {
+                self.fullData = settled
+            }
         }
     }
 
