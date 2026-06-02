@@ -15,6 +15,7 @@ struct CodeGraphCanvas: View {
     let data: CGData
     @Binding var selected:    CGNode?
     @Binding var focusedNode: CGNode?
+    var showLabels: Bool = true
     var onNodeOpen: ((CGNode) -> Void)? = nil
 
     // MARK: Pan / zoom
@@ -139,7 +140,7 @@ struct CodeGraphCanvas: View {
             }
 
             // Label — scale-corrected so screen size ≈ 11pt regardless of zoom
-            if scale > 0.2 {
+            if showLabels && scale > 0.2 {
                 let fontSize  = max(CGFloat(7), CGFloat(11) / scale)
                 let labelX    = pos.x + (r + 4) / scale
                 let labelY    = pos.y - fontSize * 0.5

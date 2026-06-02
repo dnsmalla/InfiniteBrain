@@ -12,6 +12,7 @@ struct CodeGraphView: View {
     @State private var focusedNode: CGNode? = nil
     @State private var runTask:      Task<Void, Never>?
     @State private var showSymbols:  Bool      = false
+    @State private var showLabels:   Bool      = true
     @State private var graphExpanded: Bool     = false
     @State private var showControlsPanel: Bool = true
     @State private var showItemsPanel:    Bool = true
@@ -199,6 +200,7 @@ struct CodeGraphView: View {
                     CodeGraphCanvas(data: displayData,
                                     selected: $selectedNode,
                                     focusedNode: $focusedNode,
+                                    showLabels: showLabels,
                                     onNodeOpen: openNode)
                 }
             }
@@ -227,6 +229,12 @@ struct CodeGraphView: View {
                     Divider().frame(height: 14)
                     Toggle(isOn: $showSymbols) {
                         Label("Symbols", systemImage: showSymbols ? "function" : "doc")
+                            .font(.caption)
+                    }
+                    .toggleStyle(.switch).controlSize(.small)
+                    Divider().frame(height: 14)
+                    Toggle(isOn: $showLabels) {
+                        Label("Labels", systemImage: showLabels ? "text.bubble.fill" : "text.bubble")
                             .font(.caption)
                     }
                     .toggleStyle(.switch).controlSize(.small)
@@ -392,7 +400,7 @@ struct CodeGraphView: View {
     private var expandedOverlay: some View {
         ZStack(alignment: .topTrailing) {
             Color(NSColor.windowBackgroundColor).ignoresSafeArea()
-            CodeGraphCanvas(data: displayData, selected: $selectedNode, focusedNode: $focusedNode, onNodeOpen: openNode)
+            CodeGraphCanvas(data: displayData, selected: $selectedNode, focusedNode: $focusedNode, showLabels: showLabels, onNodeOpen: openNode)
             Button { graphExpanded = false } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 22))
