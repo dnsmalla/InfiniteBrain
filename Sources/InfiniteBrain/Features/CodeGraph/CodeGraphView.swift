@@ -13,6 +13,7 @@ struct CodeGraphView: View {
     @State private var runTask:      Task<Void, Never>?
     @State private var showSymbols:  Bool      = false
     @State private var showLabels:   Bool      = true
+    @State private var filterKind:   CGNodeKind? = nil
     @State private var graphExpanded: Bool     = false
     @State private var showControlsPanel: Bool = true
     @State private var showItemsPanel:    Bool = true
@@ -65,6 +66,7 @@ struct CodeGraphView: View {
         .onDisappear { runTask?.cancel() }
         .onChange(of: fullData)    { _, _ in recomputeDisplayData() }
         .onChange(of: showSymbols) { _, _ in recomputeDisplayData() }
+        .onChange(of: filterKind)  { _, _ in recomputeDisplayData() }
     }
 
     // MARK: - Panel 1: Controls
@@ -264,25 +266,47 @@ struct CodeGraphView: View {
         .background(Color(NSColor.controlBackgroundColor))
     }
 
-    /// Compact inline legend showing every node kind present in displayData.
+    /// Clickable filter legend — tap a kind to show only those nodes; tap again to clear.
     private var colorLegend: some View {
-        let presentKinds = Array(Set(displayData.nodes.map(\.kind)))
+        let presentKinds = Array(Set(fullData.nodes.map(\.kind)))
             .sorted { $0.rawValue < $1.rawValue }
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 14) {
+            HStack(spacing: 8) {
                 ForEach(presentKinds, id: \.self) { kind in
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(CGPalette.color(for: kind))
-                            .frame(width: 8, height: 8)
-                        Text(kind.displayName)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                    let isActive = filterKind == kind
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            filterKind = isActive ? nil : kind
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(CGPalette.color(for: kind))
+                                .frame(width: 8, height: 8)
+                            Text(kind.displayName)
+                                .font(.system(size: 10, weight: isActive ? .semibold : .regular))
+                                .foregroundStyle(isActive ? Color.primary : Color.secondary)
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(isActive
+                                      ? CGPalette.color(for: kind).opacity(0.15)
+                                      : Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .strokeBorder(isActive
+                                              ? CGPalette.color(for: kind).opacity(0.4)
+                                              : Color.clear, lineWidth: 1)
+                        )
                     }
+                    .buttonStyle(.plain)
+                    .help(isActive ? "Showing only \(kind.displayName) — click to clear" : "Show only \(kind.displayName)")
                 }
             }
         }
-        .frame(height: 18)
+        .frame(height: 22)
     }
 
     // MARK: - Detail panel
@@ -482,6 +506,7 @@ struct CodeGraphView: View {
 
             self.selectedNode  = nil
             self.focusedNode   = nil
+            self.filterKind    = nil
             self.fullData      = initial
             self.noteArtifacts = UAHelpers.collectNoteArtifacts(initial)
             self.status        = .loaded(nodeCount: codeGraph.nodes.count,
@@ -514,9 +539,12 @@ struct CodeGraphView: View {
         let showInCanvas: Set<CGNodeKind> = showSymbols
             ? [.file, .module, .classType, .function]
             : [.file, .module]
-        // Exclude note nodes (they have source_code_file metadata)
+        // Exclude note nodes (they have source_code_file metadata).
+        // If a kind filter is active, further restrict to that kind only.
         let kept    = fullData.nodes.filter {
-            showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
+            showInCanvas.contains($0.kind)
+            && $0.metadata["source_code_file"] == nil
+            && (filterKind == nil || $0.kind == filterKind)
         }
         let keptIds = Set(kept.map(\.id))
         let edges   = fullData.edges.filter {
