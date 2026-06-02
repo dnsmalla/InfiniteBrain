@@ -29,7 +29,7 @@ public struct NodeType: RawRepresentable, Codable, Hashable, Sendable, Expressib
     public static let reference: NodeType = "reference"
     public static let custom: NodeType = "custom"
 
-    // Code-graph types (Graphify integration)
+    // Code-graph types (UA stack)
     public static let codeFile: NodeType = "code_file"
     public static let codeSymbol: NodeType = "code_symbol"
     public static let codeModule: NodeType = "code_module"

@@ -85,7 +85,7 @@ struct CodeGraphCanvas: View {
         }
         .padding(4)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.separator, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
     }
 
     @ViewBuilder

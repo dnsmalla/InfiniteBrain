@@ -13,7 +13,7 @@ public enum EdgeType: String, Codable, CaseIterable, Sendable {
     case authored
     case tagging
 
-    // Code-graph relationships (Graphify integration)
+    // Code-graph relationships (UA stack)
     case imports
     case calls
     case references

@@ -1,4 +1,4 @@
-// Tests/InfiniteBrainTests/GraphifyParserTests.swift
+// Tests/InfiniteBrainTests/UAParserTests.swift
 import XCTest
 @testable import InfiniteBrainCore
 

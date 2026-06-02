@@ -1,6 +1,6 @@
 import Foundation
 
-/// Minimal seam for unit testing GraphifyRunner without spawning processes.
+/// Minimal seam for unit testing UARunner without spawning processes.
 public protocol ProcessLauncher: Sendable {
     /// Run an executable and await its exit. Honors Task cancellation by
     /// terminating the child process. Returns (exitCode, stdoutData, stderrData).
