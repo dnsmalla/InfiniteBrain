@@ -15,7 +15,9 @@ struct CodeGraphCanvas: View {
     let data: CGData
     @Binding var selected:    CGNode?
     @Binding var focusedNode: CGNode?
-    var showLabels: Bool = true
+    var showLabels:    Bool         = true
+    /// When set, nodes of this kind are full opacity; all others dim to 15%.
+    var highlightKind: CGNodeKind?  = nil
     var onNodeOpen: ((CGNode) -> Void)? = nil
 
     // MARK: Pan / zoom
@@ -82,6 +84,7 @@ struct CodeGraphCanvas: View {
         let focused    = focusedNode
         let hovered    = hoveredNodeId
         let selId      = selected?.id
+        let highlight  = highlightKind
         let focusNbrs  = neighbourIds(of: focused?.id)
         let hoverNbrs  = neighbourIds(of: hovered)
 
@@ -100,8 +103,14 @@ struct CodeGraphCanvas: View {
                   let p2 = effectivePos(e.toId) else { continue }
             if !visible.contains(p1) && !visible.contains(p2) { continue }
 
-            let alpha = edgeAlpha(e, focused: focused, focusNbrs: focusNbrs,
+            var alpha = edgeAlpha(e, focused: focused, focusNbrs: focusNbrs,
                                   hovered: hovered, hoverNbrs: hoverNbrs, selId: selId)
+            // Kind highlight dims edges that don't touch the highlighted kind
+            if let hk = highlight {
+                let fromKind = data.nodes.first { $0.id == e.fromId }?.kind
+                let toKind   = data.nodes.first { $0.id == e.toId   }?.kind
+                if fromKind != hk && toKind != hk { alpha = min(alpha, 0.06) }
+            }
             if alpha < 0.01 { continue }
 
             let isHighlighted = (e.fromId == selId || e.toId == selId)
@@ -110,9 +119,9 @@ struct CodeGraphCanvas: View {
             var path = Path(); path.move(to: p1); path.addLine(to: p2)
             let colour: Color = isHighlighted
                 ? AppPalette.brand.opacity(alpha)
-                : Color.secondary.opacity(alpha * 0.55)
+                : Color(NSColor.labelColor).opacity(alpha * 0.40)
             ctx.stroke(path, with: .color(colour),
-                       lineWidth: (isHighlighted ? 1.8 : 0.7) / max(scale, 0.4))
+                       lineWidth: (isHighlighted ? 2.0 : 0.8) / max(scale, 0.4))
         }
 
         // --- Nodes + labels ---
@@ -122,8 +131,10 @@ struct CodeGraphCanvas: View {
             let isSel     = n.id == selId
             let isFocused = n.id == focused?.id
             let isHovered = n.id == hoveredNodeId
-            let alpha     = nodeAlpha(n.id, focused: focused, focusNbrs: focusNbrs,
+            var alpha     = nodeAlpha(n.id, focused: focused, focusNbrs: focusNbrs,
                                       hovered: hovered, hoverNbrs: hoverNbrs)
+            // Kind highlight dims other kinds to 15%
+            if let hk = highlight, n.kind != hk { alpha = min(alpha, 0.15) }
             if alpha < 0.01 { continue }
 
             let r    = nodeR(id: n.id, prominent: isSel || isFocused || isHovered)
@@ -187,7 +198,7 @@ struct CodeGraphCanvas: View {
             return 0.04
         }
         if e.fromId == selId || e.toId == selId { return 0.85 }
-        return 0.18
+        return 0.35
     }
 
     // MARK: - Caches

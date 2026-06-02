@@ -203,6 +203,7 @@ struct CodeGraphView: View {
                                     selected: $selectedNode,
                                     focusedNode: $focusedNode,
                                     showLabels: showLabels,
+                                    highlightKind: filterKind,
                                     onNodeOpen: openNode)
                 }
             }
@@ -426,7 +427,7 @@ struct CodeGraphView: View {
     private var expandedOverlay: some View {
         ZStack(alignment: .topTrailing) {
             Color(NSColor.windowBackgroundColor).ignoresSafeArea()
-            CodeGraphCanvas(data: displayData, selected: $selectedNode, focusedNode: $focusedNode, showLabels: showLabels, onNodeOpen: openNode)
+            CodeGraphCanvas(data: displayData, selected: $selectedNode, focusedNode: $focusedNode, showLabels: showLabels, highlightKind: filterKind, onNodeOpen: openNode)
             Button { graphExpanded = false } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 22))
@@ -537,22 +538,16 @@ struct CodeGraphView: View {
     }
 
     private func recomputeDisplayData() {
-        // All code-structural kinds (excludes note nodes which have source_code_file).
+        // Canvas always shows all code-structural nodes so edges are never broken.
+        // Note nodes (generated .md) are excluded — they live in the GENERATED NOTES panel.
         let allCodeKinds: Set<CGNodeKind> = [.file, .module, .classType, .function]
         let symbolKinds:  Set<CGNodeKind> = [.classType, .function]
 
-        let kept: [CGNode]
-        if let kind = filterKind {
-            // Kind filter active: show ONLY that kind, ignoring showSymbols.
-            kept = fullData.nodes.filter {
-                $0.kind == kind && $0.metadata["source_code_file"] == nil
-            }
-        } else {
-            // No filter: respect showSymbols toggle.
-            let showInCanvas = showSymbols ? allCodeKinds : allCodeKinds.subtracting(symbolKinds)
-            kept = fullData.nodes.filter {
-                showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
-            }
+        // Decide which kinds to include based on Symbols toggle.
+        // filterKind only affects dimming (via highlightKind in the canvas), not removal.
+        let showInCanvas = showSymbols ? allCodeKinds : allCodeKinds.subtracting(symbolKinds)
+        let kept = fullData.nodes.filter {
+            showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
         }
         let keptIds = Set(kept.map(\.id))
         let edges   = fullData.edges.filter {
