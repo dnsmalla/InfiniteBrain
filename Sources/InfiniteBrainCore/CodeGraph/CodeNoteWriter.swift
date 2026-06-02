@@ -24,7 +24,7 @@ public enum CodeNoteWriter {
                 let noteRelPath = ".code-notes/notes/\(file.path).md"
                 return CGNode(
                     id: "note:\(file.path)",
-                    title: (file.path as NSString).lastPathComponent,
+                    title: (file.path as NSString).lastPathComponent + ".md",
                     kind: .docPage,
                     position: .zero,
                     metadata: [

@@ -320,8 +320,8 @@ struct CodeGraphView: View {
                     Text("No content.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     ScrollView {
-                        Text((try? AttributedString(markdown: content)) ?? AttributedString(content))
-                            .font(.system(.caption))
+                        Text(content)
+                            .font(.system(size: 11, design: .monospaced))
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
