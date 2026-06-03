@@ -30,13 +30,17 @@ public final class FileStructureExtractor {
 
     // MARK: - Pure helpers (public for tests)
 
-    public static let codeExtensions: Set<String> = ["ts", "tsx", "js", "jsx", "mjs", "cjs", "swift", "md"]
+    public static let codeExtensions: Set<String> = [
+        "ts", "tsx", "js", "jsx", "mjs", "cjs",
+        "swift", "kt", "md"
+    ]
 
     public static func language(for path: String) -> String {
         switch (path as NSString).pathExtension.lowercased() {
         case "ts", "tsx":                return "typescript"
         case "js", "jsx", "mjs", "cjs": return "javascript"
         case "swift":                    return "swift"
+        case "kt":                       return "kotlin"
         case "md":                       return "markdown"
         default:                         return "other"
         }
@@ -91,15 +95,29 @@ public final class FileStructureExtractor {
 
         switch language {
         case "typescript", "javascript":
-            if let n = nameAfter("function") { return .init(name: n, kind: "function", line: 0, declaration: decl()) }
-            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
+            if let n = nameAfter("function")  { return .init(name: n, kind: "function",  line: 0, declaration: decl()) }
+            if let n = nameAfter("class")     { return .init(name: n, kind: "class",     line: 0, declaration: decl()) }
+            if let n = nameAfter("interface") { return .init(name: n, kind: "interface", line: 0, declaration: decl()) }
+            // const foo = () => ...  or  const foo = async () =>
+            if trimmed.contains("=>") || trimmed.contains("= function") || trimmed.contains("= async") {
+                if let n = nameAfter("const") ?? nameAfter("let") {
+                    return .init(name: n, kind: "function", line: 0, declaration: decl())
+                }
+            }
             return nil
         case "swift":
-            if let n = nameAfter("func")     { return .init(name: n, kind: "function", line: 0, declaration: decl()) }
-            if let n = nameAfter("class")    { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
-            if let n = nameAfter("struct")   { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
-            if let n = nameAfter("enum")     { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
-            if let n = nameAfter("protocol") { return .init(name: n, kind: "class",    line: 0, declaration: decl()) }
+            if let n = nameAfter("func")      { return .init(name: n, kind: "function",  line: 0, declaration: decl()) }
+            if let n = nameAfter("class")     { return .init(name: n, kind: "class",     line: 0, declaration: decl()) }
+            if let n = nameAfter("struct")    { return .init(name: n, kind: "struct",    line: 0, declaration: decl()) }
+            if let n = nameAfter("enum")      { return .init(name: n, kind: "enum",      line: 0, declaration: decl()) }
+            if let n = nameAfter("protocol")  { return .init(name: n, kind: "protocol",  line: 0, declaration: decl()) }
+            if let n = nameAfter("extension") { return .init(name: n, kind: "extension", line: 0, declaration: decl()) }
+            return nil
+        case "kotlin":
+            if let n = nameAfter("class")     { return .init(name: n, kind: "class",     line: 0, declaration: decl()) }
+            if let n = nameAfter("fun")       { return .init(name: n, kind: "function",  line: 0, declaration: decl()) }
+            if let n = nameAfter("object")    { return .init(name: n, kind: "class",     line: 0, declaration: decl()) }
+            if let n = nameAfter("interface") { return .init(name: n, kind: "interface", line: 0, declaration: decl()) }
             return nil
         default:
             return nil
