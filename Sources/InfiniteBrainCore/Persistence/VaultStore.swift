@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 public enum VaultStoreError: Error, Equatable {
     case notFound(id: String)
@@ -131,7 +132,12 @@ public actor VaultStore {
             return "-"
         }
         let collapsed = String(mapped).split(separator: "-", omittingEmptySubsequences: true).joined(separator: "-")
-        return collapsed
+        guard collapsed.isEmpty else { return collapsed }
+        // Punctuation/emoji-only titles collapse to "". Fall back to a short
+        // deterministic hash of the title so two distinct such titles never
+        // share a folder (which previously commingled unrelated sources).
+        let digest = SHA256.hash(data: Data(title.utf8))
+        return "t-" + digest.prefix(4).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Where to write the given note.

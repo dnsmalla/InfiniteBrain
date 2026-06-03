@@ -17,10 +17,13 @@ public struct SystemDateProvider: DateProvider {
 /// sortable by creation time. Good enough for vault note IDs.
 public struct ULIDGenerator: IDGenerator {
     private static let alphabet = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
-    public init() {}
+    private let dateProvider: DateProvider
+    public init(dateProvider: DateProvider = SystemDateProvider()) {
+        self.dateProvider = dateProvider
+    }
 
     public func next() -> String {
-        let ms = UInt64(Date().timeIntervalSince1970 * 1000)
+        let ms = UInt64(dateProvider.now().timeIntervalSince1970 * 1000)
         var time = ""
         var t = ms
         for _ in 0..<10 {
