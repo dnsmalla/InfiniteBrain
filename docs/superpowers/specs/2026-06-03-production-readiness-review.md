@@ -26,10 +26,10 @@ Consolidated from a 5-pass read-only review (services, persistence, security, Sh
 
 ## MEDIUM
 
-- [ ] **M1 — Main-thread filesystem IO in view lifecycle** (`VaultBrowser.swift:51-54,246`, `SettingsView.checkTools`). Move to `Task.detached`.
+- [x] **M1 — Main-thread filesystem IO in view lifecycle** (`VaultBrowser.swift:51-54,246`, `SettingsView.checkTools`). Move to `Task.detached`.
 - [x] **M2 — Keychain `set` is delete-then-add (key loss window) + no `kSecAttrAccessible`** (`Keychain.swift:37-52`) → key can sync to iCloud/backup and is lost if interrupted. Use SecItemUpdate-or-add + `…ThisDeviceOnly`.
 - [ ] **M3 — revertIngest swallows all errors (`try?`) → fake success** (`Orchestrator.swift:99-108`); re-ingest after chunk-count change duplicates notes (`:141,158`). Aggregate errors; call `revertIngest` in the fresh branch.
-- [ ] **M4 — QueryService: non-deterministic `prefix` over Dictionary.values + no token budget on bodies** (`QueryService.swift:175-177`); empty-input/empty-index returns blank answer. Order deterministically, cap by length, short-circuit empties.
+- [x] **M4 — QueryService: non-deterministic `prefix` over Dictionary.values + no token budget on bodies** (`QueryService.swift:175-177`); empty-input/empty-index returns blank answer. Order deterministically, cap by length, short-circuit empties.
 - [ ] **M5 — Logging is ~5 call sites; most VM/persistence errors never hit OSLog.** Add `LogService.error` alongside user-facing error assignments.
 - [ ] **M6 — Embedding index load `try?` everywhere → corrupt index silently = "no results"** (QueryViewModel/DraftingViewModel/Ingest). Log + surface "run reindex".
 - [ ] **M7 — Size caps missing on ingested files / graph JSON / scanner stdout** (DoS/OOM on untrusted input). Pre-read size guards.
@@ -38,7 +38,7 @@ Consolidated from a 5-pass read-only review (services, persistence, security, Sh
 
 ## LOW
 
-- [ ] **L1 — Magic numbers**: `16_000` chunk size duplicated 3×; `512`/`100_000` CLI reindex hack; unnamed debounce literals.
+- [x] **L1 — Magic numbers**: `16_000` chunk size duplicated 3×; `512`/`100_000` CLI reindex hack; unnamed debounce literals.
 - [ ] **L2 — CLI value-flags silently no-op at end of args / on bad Int** (`main.swift:157-161`).
 - [ ] **L3 — SkillSyncService version check is a no-op** — bundled skill fixes never reach existing vaults.
 - [ ] **L4 — CLI clients ignore `responseSchema`; usage accounting dark for CLI providers; Anthropic usage swallowed on parse error.**
