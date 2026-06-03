@@ -1,4 +1,5 @@
 import SwiftUI
+import GraphKit
 import AppKit
 import InfiniteBrainCore
 
@@ -538,22 +539,29 @@ struct CodeGraphView: View {
     }
 
     private func recomputeDisplayData() {
-        // Canvas always shows all code-structural nodes so edges are never broken.
-        // Note nodes (generated .md) are excluded — they live in the GENERATED NOTES panel.
+        // Always keep all structural nodes in the edge graph so inherits/calls/implements
+        // edges are never broken by the Symbols toggle. The toggle controls canvas visibility.
         let allCodeKinds: Set<CGNodeKind> = [.file, .module, .classType, .function]
-        let symbolKinds:  Set<CGNodeKind> = [.classType, .function]
 
-        // Decide which kinds to include based on Symbols toggle.
-        // filterKind only affects dimming (via highlightKind in the canvas), not removal.
-        let showInCanvas = showSymbols ? allCodeKinds : allCodeKinds.subtracting(symbolKinds)
-        let kept = fullData.nodes.filter {
-            showInCanvas.contains($0.kind) && $0.metadata["source_code_file"] == nil
+        // All structural nodes participate in edge resolution (needed for cross-node edges).
+        let allKept = fullData.nodes.filter {
+            allCodeKinds.contains($0.kind) && $0.metadata["source_code_file"] == nil
         }
-        let keptIds = Set(kept.map(\.id))
-        let edges   = fullData.edges.filter {
-            keptIds.contains($0.fromId) && keptIds.contains($0.toId)
+        let allKeptIds = Set(allKept.map(\.id))
+
+        // Symbols toggle controls which nodes are rendered on the canvas.
+        let symbolKinds: Set<CGNodeKind> = [.classType, .function]
+        let visibleKinds = showSymbols ? allCodeKinds : allCodeKinds.subtracting(symbolKinds)
+        let visibleNodes = allKept.filter { visibleKinds.contains($0.kind) }
+        let visibleIds   = Set(visibleNodes.map(\.id))
+
+        // Keep edges where both endpoints exist in the full structural set,
+        // but only render edges where both endpoints are currently visible.
+        let edges = fullData.edges.filter {
+            allKeptIds.contains($0.fromId) && allKeptIds.contains($0.toId) &&
+            visibleIds.contains($0.fromId) && visibleIds.contains($0.toId)
         }
-        displayData = CGData(nodes: kept, edges: edges)
+        displayData = CGData(nodes: visibleNodes, edges: edges)
     }
 
     private func openNode(_ node: CGNode) {

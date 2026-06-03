@@ -1,4 +1,5 @@
 import SwiftUI
+import GraphKit
 import InfiniteBrainCore
 
 /// Knowledge Graph view — uses the same CGData / CodeGraphCanvas / CGSimulation

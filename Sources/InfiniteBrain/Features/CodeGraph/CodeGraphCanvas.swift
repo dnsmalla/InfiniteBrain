@@ -8,6 +8,7 @@
 // • Hover: neighbours 85%, rest 30%
 // • Clear-focus button in toolbar
 import SwiftUI
+import GraphKit
 import InfiniteBrainCore
 
 @MainActor

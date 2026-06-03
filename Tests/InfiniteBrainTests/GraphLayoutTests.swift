@@ -2,6 +2,7 @@
 // both the Code Graph and the Knowledge Graph. GraphLayout (the old
 // Note-based variant) was removed when GraphView migrated to CGData.
 import XCTest
+import GraphKit
 @testable import InfiniteBrainCore
 
 final class GraphLayoutTests: XCTestCase {

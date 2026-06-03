@@ -1,4 +1,5 @@
 import Foundation
+import GraphKit
 import CoreGraphics
 
 /// Force-directed physics for the code graph. Uses the QuadTreeNode (Barnes-Hut)

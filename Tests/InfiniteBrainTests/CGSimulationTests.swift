@@ -1,4 +1,5 @@
 import XCTest
+import GraphKit
 @testable import InfiniteBrainCore
 
 final class CGSimulationTests: XCTestCase {

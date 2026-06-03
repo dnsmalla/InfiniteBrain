@@ -2,6 +2,7 @@
 // Each CGNodeKind gets a pie slice; nodes within a slice spread
 // across three concentric rings for readability at high counts.
 import Foundation
+import GraphKit
 import CoreGraphics
 
 public enum CodeGraphLayout {

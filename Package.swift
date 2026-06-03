@@ -12,21 +12,21 @@ let package = Package(
         .library(name: "InfiniteBrainCore", targets: ["InfiniteBrainCore"]),
     ],
     dependencies: [
-        .package(path: "SharedLLMKit")
+        .package(path: "SharedLLMKit"),
+        .package(path: "../GraphKit"),
     ],
     targets: [
         .target(
             name: "InfiniteBrainCore",
             dependencies: [
-                .product(name: "SharedLLMKit", package: "SharedLLMKit")
+                .product(name: "SharedLLMKit", package: "SharedLLMKit"),
+                .product(name: "GraphKit", package: "GraphKit"),
             ],
             path: "Sources/InfiniteBrainCore",
             resources: [
                 .copy("Resources/skills"),
                 .copy("Resources/rules"),
                 .copy("Resources/web"),
-                .copy("Resources/code_ast_scan.py"),
-                .copy("Resources/code_graph_scan.py"),
             ]
         ),
         .executableTarget(

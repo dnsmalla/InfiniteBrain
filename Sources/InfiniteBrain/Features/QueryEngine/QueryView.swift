@@ -1,4 +1,5 @@
 import SwiftUI
+import GraphKit
 import InfiniteBrainCore
 
 struct QueryView: View {

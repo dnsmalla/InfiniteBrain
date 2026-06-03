@@ -1,4 +1,5 @@
 import SwiftUI
+import GraphKit
 import InfiniteBrainCore
 
 /// Shim kept so HelpView's existing `SchemaView.color(for:)` call compiles
