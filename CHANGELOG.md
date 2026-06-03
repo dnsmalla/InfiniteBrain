@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.26.0] — 2026-06-03
+
+Code Graph upgraded to a tree-sitter scanner, then the whole graph engine
+extracted into a shared package so InfiniteBrain and meet-notes stay in sync.
+
+- **Tree-sitter Code Graph:** the scanner now parses Python/TypeScript/JavaScript/
+  Kotlin via `tree-sitter-languages` (Swift via the built-in line scanner),
+  producing accurate `calls`, `inherits`, `implements`, and method→class edges
+  with `EXTRACTED`/`INFERRED`/`AMBIGUOUS` confidence. `imports` now resolves
+  `tsconfig` path aliases. Requires `tree-sitter` on the system `python3`
+  (graceful stdlib-`ast` fallback otherwise).
+- **GraphKit package:** the graph engine (models, scanner, builder, parsers,
+  text→graph, incremental cache) moved to the shared
+  [GraphKit](https://github.com/dnsmalla/graph-kit) package, pinned via SwiftPM
+  (`graph-kit` @ 1.0.0). InfiniteBrain depends on it; the local CodeGraph engine
+  copies were deleted. `CGPalette` stays app-side (keeps the engine SwiftUI-free).
+- **Cleanup:** `.venv/` gitignored; docs/README corrected to describe the
+  tree-sitter scanner (was Graphify CLI); removed dead code (BacklinkIndex,
+  LocalMLProvider, VaultHealthService, scratch files).
+
 ## [0.25.0] — 2026-05-07
 
 EPUB ingest support. User asked "does it work for .epub?" — no, it

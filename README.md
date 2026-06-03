@@ -113,7 +113,7 @@ Run `swift run infb help` for the full reference.
 | `Sources/InfiniteBrain/Resources/skills/` | One folder per pipeline stage. Each has a `SKILL.md` describing exactly what the AI should do |
 | `Sources/InfiniteBrain/Resources/rules/` | Cross-cutting rules: output format, citation policy, token budget, quality bar |
 | `SharedLLMKit/` | Standalone Swift package — talks to Claude, runs skills, validates output, computes embeddings |
-| `Tests/` | 32 tests covering the parser, validator, vault round-trip, full ingest pipeline, and query service |
+| `Tests/` | unit + integration tests covering the parser, validator, vault round-trip, full ingest pipeline, query service, and graph layout (graph engine tests live in GraphKit) |
 | `docs/` | Architecture overview, pipeline diagram, data model, ADRs |
 
 ---
@@ -248,10 +248,12 @@ running `xcrun notarytool submit`.
 - ✅ macOS Keychain for the API key, vault path persisted in UserDefaults
 - ⏳ Crash-resume checkpointing
 - ⏳ Graph view
-- ✅ Code Graph — visualize a repository's structure (classes, calls, imports) via the [Graphify](https://github.com/safishamsi/graphify) CLI. See [docs/user-guide/code-graph.md](docs/user-guide/code-graph.md).
+- ✅ Code Graph — visualize a repository's structure (files, classes, functions, `imports`/`calls`/`inherits`/`implements`) via the bundled tree-sitter scanner in [GraphKit](https://github.com/dnsmalla/graph-kit). See [docs/user-guide/code-graph.md](docs/user-guide/code-graph.md).
 - ⏳ Code-signed `.dmg`
 
-32 tests pass. Both packages build clean. CI runs on every push.
+The graph engine lives in the shared [GraphKit](https://github.com/dnsmalla/graph-kit) package (pinned via SwiftPM). Code Graph's rich scanner needs tree-sitter on the system `python3`: `pip3 install tree-sitter==0.21.3 tree-sitter-languages==1.10.2` (without it, scanning falls back to Python-only stdlib `ast`).
+
+Both packages build clean. CI runs on every push.
 
 ---
 

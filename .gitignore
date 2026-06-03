@@ -12,3 +12,6 @@ DerivedData/
 .serena/
 .claude/
 .code-notes/
+.venv/
+venv/
+.understand-anything/
