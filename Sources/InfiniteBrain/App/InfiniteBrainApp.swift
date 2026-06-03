@@ -4,37 +4,28 @@ import InfiniteBrainCore
 @main
 struct InfiniteBrainApp: App {
     @StateObject private var settings = AppSettings()
-    @StateObject private var ingest = IngestViewModel()
+    @StateObject private var ingest   = IngestViewModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .navigationTitle("InfiniteBrain v0.26.0")
                 .environmentObject(settings)
                 .environmentObject(ingest)
-                .frame(minWidth: 1100, minHeight: 720)
+                // 700 × 480 works well on a 13" MacBook Air
+                .frame(minWidth: 700, minHeight: 480)
         }
         .windowStyle(.titleBar)
         .commands {
-            CommandGroup(replacing: .help) {
-                HelpMenuButton()
-            }
+            CommandGroup(replacing: .help) { HelpMenuButton() }
         }
 
-        // Standalone Help window. Opened via Help → InfiniteBrain Help
-        // (Cmd-?) or from the Settings tab. Lives outside the main window
-        // so the user can keep it open while ingesting.
         WindowGroup("InfiniteBrain Help", id: "help") {
-            HelpView()
-                .frame(minWidth: 880, minHeight: 600)
+            HelpView().frame(minWidth: 760, minHeight: 540)
         }
-        .defaultSize(width: 1000, height: 720)
+        .defaultSize(width: 900, height: 680)
     }
 }
 
-/// SwiftUI doesn't let you put `openWindow` calls inside a CommandGroup
-/// builder directly (no environment yet), so we wrap it in a tiny
-/// helper view that pulls the action from the environment.
 private struct HelpMenuButton: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
@@ -43,231 +34,224 @@ private struct HelpMenuButton: View {
     }
 }
 
+// MARK: - App section
+
+enum AppSection: String, Hashable, CaseIterable, Identifiable {
+    case ingest, vault, graph, codeGraph, query, drafting, settings
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .ingest:    return "Ingest"
+        case .vault:     return "Vault"
+        case .graph:     return "Knowledge Graph"
+        case .codeGraph: return "Code Graph"
+        case .query:     return "Query"
+        case .drafting:  return "Drafting Room"
+        case .settings:  return "Settings"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .ingest:    return "tray.and.arrow.down.fill"
+        case .vault:     return "books.vertical.fill"
+        case .graph:     return "circle.hexagongrid.fill"
+        case .codeGraph: return "chevron.left.forwardslash.chevron.right"
+        case .query:     return "sparkle.magnifyingglass"
+        case .drafting:  return "pencil.and.scribble"
+        case .settings:  return "gearshape.fill"
+        }
+    }
+}
+
+// MARK: - ContentView
+
 struct ContentView: View {
     @EnvironmentObject var settings: AppSettings
-    @EnvironmentObject var ingest: IngestViewModel
-    
-    @State private var selectedTab: Tab? = .ingest
-    
-    enum Tab: String, CaseIterable, Identifiable {
-        case ingest, vault, graph, codeGraph, query, drafting, settings
-        var id: String { self.rawValue }
+    @EnvironmentObject var ingest:   IngestViewModel
+    @State private var selection: AppSection? = .ingest
 
-        var label: String {
-            switch self {
-            case .ingest: return "Ingest"
-            case .vault: return "Vault"
-            case .graph: return "Knowledge Graph"
-            case .codeGraph: return "Code Graph"
-            case .query: return "Query"
-            case .drafting: return "Drafting Room"
-            case .settings: return "Settings"
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .ingest: return "tray.and.arrow.down.fill"
-            case .vault: return "books.vertical.fill"
-            case .graph: return "circle.hexagongrid.fill"
-            case .codeGraph: return "point.3.connected.trianglepath.dotted"
-            case .query: return "sparkle.magnifyingglass"
-            case .drafting: return "pencil.and.scribble"
-            case .settings: return "gearshape.fill"
-            }
-        }
-    }
-    
     var body: some View {
         NavigationSplitView {
-            Sidebar(selection: $selectedTab)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 280)
+            Sidebar(selection: $selection)
         } detail: {
-            ZStack(alignment: .bottom) {
-                Group {
-                    if let tab = selectedTab {
-                        switch tab {
-                        case .ingest: IngestView()
-                        case .vault: VaultBrowser()
-                        case .graph: GraphView()
-                        case .codeGraph: CodeGraphView()
-                        case .query: QueryView()
-                        case .drafting: DraftingRoom()
-                        case .settings: SettingsView()
-                        }
-                    } else {
-                        Text("Select a view from the sidebar")
-                            .foregroundStyle(.secondary)
-                            .font(.title3)
-                    }
+            ZStack {
+                switch selection ?? .ingest {
+                case .ingest:    IngestView()
+                case .vault:     VaultBrowser()
+                case .graph:     GraphView()
+                case .codeGraph: CodeGraphView()
+                case .query:     QueryView()
+                case .drafting:  DraftingRoom()
+                case .settings:  SettingsView()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                
-                StatusBar()
-                    .padding(20)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(NSColor.windowBackgroundColor))
         }
-        .onAppear {
-            ingest.startWatcher(settings: settings)
-        }
-        .onChange(of: settings.vaultPath) { _, newValue in
+        .onAppear { ingest.startWatcher(settings: settings) }
+        .onChange(of: settings.vaultPath) { _, new in
             ingest.stopWatcher()
-            if newValue != nil {
-                ingest.startWatcher(settings: settings)
-            }
+            if new != nil { ingest.startWatcher(settings: settings) }
         }
     }
 }
+
+// MARK: - Sidebar
 
 private struct Sidebar: View {
-    @Binding var selection: ContentView.Tab?
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // App Header
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(AppPalette.brand.gradient)
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                
-                VStack(alignment: .leading, spacing: -2) {
-                    Text("Infinite")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Text("Brain")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .opacity(0.6)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
-            .padding(.bottom, 32)
-            
-            // Navigation Links
-            VStack(spacing: 4) {
-                ForEach(ContentView.Tab.allCases) { tab in
-                    SidebarItem(tab: tab, isSelected: selection == tab) {
-                        selection = tab
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            
-            Spacer()
-            
-            // Pro Badge / Version
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("v0.26.0")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.primary.opacity(0.05))
-                        .clipShape(Capsule())
-                    
-                    Spacer()
-                    
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                    Text("Live Indexing")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(20)
-            .background(Divider(), alignment: .top)
-        }
-        .background(.ultraThinMaterial)
-    }
-}
-
-private struct SidebarItem: View {
-    let tab: ContentView.Tab
-    let isSelected: Bool
-    let action: () -> Void
-    
-    @State private var isHovered = false
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 16))
-                    .frame(width: 24)
-                    .foregroundStyle(isSelected ? .white : (isHovered ? AppPalette.brand : .secondary))
-                
-                Text(tab.label)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-                    .foregroundStyle(isSelected ? .white : .primary)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(AppPalette.brand.gradient)
-                        .shadow(color: AppPalette.brand.opacity(0.3), radius: 4, y: 2)
-                } else if isHovered {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.primary.opacity(0.05))
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
-    }
-}
-
-/// Always-visible bottom status row: vault folder, active LLM provider, ready state.
-struct StatusBar: View {
+    @Binding var selection: AppSection?
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var ingest:   IngestViewModel
+
+    /// Tracks actual rendered width — below compactThreshold we show icons only.
+    @State private var sidebarWidth: CGFloat = 200
+    private let compactThreshold: CGFloat = 140
+    private var isCompact: Bool { sidebarWidth < compactThreshold }
 
     var body: some View {
-        HStack(spacing: 16) {
-            if let vault = settings.vaultPath {
-                Label(vault.lastPathComponent, systemImage: "folder.fill")
-                    .lineLimit(1).truncationMode(.middle)
-                    .foregroundStyle(.primary)
-            } else {
-                Label("No vault", systemImage: "folder.badge.questionmark")
-                    .foregroundStyle(.orange)
+        List(selection: $selection) {
+            Section(isCompact ? "" : "Workspace") {
+                row(.ingest)
+                row(.vault)
             }
-            Divider().frame(height: 14)
-            Label(settings.provider.displayName, systemImage: "cpu")
-                .foregroundStyle(.secondary)
-            Spacer()
-            if settings.isConfigured {
-                HStack(spacing: 6) {
-                    Circle().fill(Color.green).frame(width: 8, height: 8)
-                        .shadow(color: .green.opacity(0.8), radius: 4)
-                    Text("Ready")
-                        .foregroundStyle(.primary)
-                }
-            } else {
-                Label("Setup incomplete", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+            Section(isCompact ? "" : "Graph") {
+                row(.graph)
+                row(.codeGraph)
+            }
+            Section(isCompact ? "" : "AI") {
+                row(.query)
+                row(.drafting)
+            }
+            Section(isCompact ? "" : "System") {
+                row(.settings)
             }
         }
-        .font(.system(.caption, design: .rounded).weight(.medium))
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .listStyle(.sidebar)
+        // Measure actual width to trigger compact mode
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { sidebarWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, w in sidebarWidth = w }
+            }
+        )
+        .safeAreaInset(edge: .top,    spacing: 0) { brandHeader }
+        .safeAreaInset(edge: .bottom, spacing: 0) { footer      }
+        // Flexible sizing: collapses to icon-only rail at min
+        .navigationSplitViewColumnWidth(min: 60, ideal: 210, max: 260)
+        // ⌘1–⌘7 keyboard shortcuts
+        .overlay(keyboardShortcuts)
+    }
+
+    // MARK: Row
+
+    @ViewBuilder
+    private func row(_ section: AppSection) -> some View {
+        if isCompact {
+            Image(systemName: section.icon)
+                .font(.system(size: 16))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(AppPalette.brand)
+                .frame(width: 22, height: 22)
+                .tag(section)
+                .help(section.label)
+        } else {
+            Label(section.label, systemImage: section.icon)
+                .tag(section)
+        }
+    }
+
+    // MARK: Brand header
+
+    private var brandHeader: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(AppPalette.brand.opacity(0.14))
+                    .frame(width: 26, height: 26)
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppPalette.brand)
+            }
+            if !isCompact {
+                Text("InfiniteBrain")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(.horizontal, isCompact ? 6 : 14)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .help(isCompact ? "InfiniteBrain" : "")
+    }
+
+    // MARK: Footer
+
+    private var footer: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 6) {
+                if isCompact {
+                    // Compact: just the status dot
+                    Circle()
+                        .fill(settings.isConfigured ? Color.green : Color.orange)
+                        .frame(width: 7, height: 7)
+                        .help(settings.isConfigured ? "Ready" : "Setup incomplete")
+                } else {
+                    // Full: vault name + provider + status
+                    if let vault = settings.vaultPath {
+                        Image(systemName: "folder.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(vault.lastPathComponent)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    } else {
+                        Image(systemName: "folder.badge.questionmark")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text("No vault")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                    Spacer(minLength: 4)
+                    Circle()
+                        .fill(settings.isConfigured ? Color.green : Color.orange)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: settings.isConfigured
+                                ? .green.opacity(0.6) : .orange.opacity(0.6),
+                                radius: 3)
+                    Text(settings.isConfigured ? "Ready" : "Setup")
+                        .font(.caption2)
+                        .foregroundStyle(settings.isConfigured ? Color.primary : Color.orange)
+                }
+            }
+            .padding(.horizontal, isCompact ? 0 : 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+        }
+        .background(.bar)
+    }
+
+    // MARK: Keyboard shortcuts (invisible)
+
+    private var keyboardShortcuts: some View {
+        let sections = AppSection.allCases
+        return ZStack {
+            ForEach(Array(sections.enumerated()), id: \.element) { idx, section in
+                Button("") { selection = section }
+                    .keyboardShortcut(KeyEquivalent(Character("\(idx + 1)")),
+                                      modifiers: .command)
+                    .frame(width: 0, height: 0)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+            }
         }
     }
 }
