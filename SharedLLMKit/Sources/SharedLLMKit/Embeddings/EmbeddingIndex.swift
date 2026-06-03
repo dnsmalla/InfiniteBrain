@@ -1,5 +1,11 @@
 import Accelerate
 
+public enum EmbeddingIndexError: Error {
+    /// The persisted index ended mid-record — treat as corrupt and rebuild
+    /// rather than committing a silently partial vector set.
+    case truncated
+}
+
 /// In-memory map of `id → vector`, persisted as a compact binary file.
 /// Uses brute-force cosine with Accelerate (SIMD) for high-speed lookup.
 public actor EmbeddingIndex {
@@ -80,12 +86,12 @@ public actor EmbeddingIndex {
             var loaded: [String: [Float]] = [:]
             for _ in 0..<count {
                 guard let idLen = read(Int32.self),
-                      offset + Int(idLen) <= decompressed.count else { break }
+                      offset + Int(idLen) <= decompressed.count else { throw EmbeddingIndexError.truncated }
                 let id = String(decoding: decompressed.subdata(in: offset..<offset+Int(idLen)), as: UTF8.self)
                 offset += Int(idLen)
                 
                 guard let vecLen = read(Int32.self),
-                      offset + Int(vecLen * 2) <= decompressed.count else { break } // Float16 is 2 bytes
+                      offset + Int(vecLen * 2) <= decompressed.count else { throw EmbeddingIndexError.truncated } // Float16 is 2 bytes
                 
                 // Read Float16 and convert to Float32 for memory
                 let f16Data = decompressed.subdata(in: offset..<offset+Int(vecLen * 2))

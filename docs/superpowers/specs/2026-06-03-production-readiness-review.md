@@ -22,12 +22,12 @@ Consolidated from a 5-pass read-only review (services, persistence, security, Sh
 - [x] **H7 (addressed by H5 + CR2/CR3 transport timeouts) — No timeout on any LLM/embedding call in the ingest pipeline** (`Orchestrator decideOne`). A hung provider call stalls a slot forever (overnight-ingest hazard). Wrap each call in a timeout → quarantine on expiry.
 - [x] **H8 — ULID generator ignores injected `DateProvider`, uses `Date()` + full re-roll** (`IDGenerator.swift:18-35`); collision → silent note overwrite (`VaultStore.write` clobbers). Use DateProvider, monotonic randomness, refuse clobber.
 - [x] **H9 — Empty `slugify` result commingles sources** (`VaultStore.swift:122-160`): punctuation/emoji-only titles → `""` → shared folder. Fall back to note id.
-- [ ] **H10 — Index files load partial on truncation, silently** (`MetadataIndex.swift:67-75`, `EmbeddingIndex.swift:83-104`). Add magic+version/length trailer; on mismatch error + trigger `IndexRebuilder`.
+- [x] **H10 — Index files load partial on truncation, silently** (`MetadataIndex.swift:67-75`, `EmbeddingIndex.swift:83-104`). Add magic+version/length trailer; on mismatch error + trigger `IndexRebuilder`.
 
 ## MEDIUM
 
 - [ ] **M1 — Main-thread filesystem IO in view lifecycle** (`VaultBrowser.swift:51-54,246`, `SettingsView.checkTools`). Move to `Task.detached`.
-- [ ] **M2 — Keychain `set` is delete-then-add (key loss window) + no `kSecAttrAccessible`** (`Keychain.swift:37-52`) → key can sync to iCloud/backup and is lost if interrupted. Use SecItemUpdate-or-add + `…ThisDeviceOnly`.
+- [x] **M2 — Keychain `set` is delete-then-add (key loss window) + no `kSecAttrAccessible`** (`Keychain.swift:37-52`) → key can sync to iCloud/backup and is lost if interrupted. Use SecItemUpdate-or-add + `…ThisDeviceOnly`.
 - [ ] **M3 — revertIngest swallows all errors (`try?`) → fake success** (`Orchestrator.swift:99-108`); re-ingest after chunk-count change duplicates notes (`:141,158`). Aggregate errors; call `revertIngest` in the fresh branch.
 - [ ] **M4 — QueryService: non-deterministic `prefix` over Dictionary.values + no token budget on bodies** (`QueryService.swift:175-177`); empty-input/empty-index returns blank answer. Order deterministically, cap by length, short-circuit empties.
 - [ ] **M5 — Logging is ~5 call sites; most VM/persistence errors never hit OSLog.** Add `LogService.error` alongside user-facing error assignments.
