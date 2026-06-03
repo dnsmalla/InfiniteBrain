@@ -116,13 +116,25 @@ public struct CGNode: Identifiable, Equatable, Sendable {
     }
 }
 
+public enum CGEdgeConfidence: String, Sendable, Hashable {
+    /// Explicitly stated in source code — 100% reliable.
+    case extracted = "EXTRACTED"
+    /// Reasonably deduced (e.g. call sites) — ~80% reliable.
+    case inferred  = "INFERRED"
+    /// Uncertain (dynamic dispatch, reflection) — 50–70% reliable.
+    case ambiguous = "AMBIGUOUS"
+}
+
 public struct CGEdge: Equatable, Sendable {
     public let fromId: String
     public let toId: String
     public let kind: CGEdgeKind
+    public let confidence: CGEdgeConfidence
 
-    public init(fromId: String, toId: String, kind: CGEdgeKind) {
+    public init(fromId: String, toId: String, kind: CGEdgeKind,
+                confidence: CGEdgeConfidence = .extracted) {
         self.fromId = fromId; self.toId = toId; self.kind = kind
+        self.confidence = confidence
     }
 }
 
