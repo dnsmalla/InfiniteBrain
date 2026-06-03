@@ -61,18 +61,21 @@ public actor MetadataIndex {
         entries.removeAll()
         
         for _ in 0..<count {
+            // A short read mid-record means the file was truncated (e.g. a crash
+            // during a non-atomic external copy). Don't silently accept a partial
+            // index — signal corruption so the caller rebuilds from the markdown.
             guard let noteId = readString(),
                   let title = readString(),
                   let type = readString(),
                   let summary = readString(),
-                  let sourceCount = readInt32() else { break }
-            
+                  let sourceCount = readInt32() else { entries.removeAll(); return false }
+
             var sources: [String] = []
             for _ in 0..<sourceCount {
                 if let s = readString() { sources.append(s) }
             }
-            
-            guard let edgeCount = readInt32() else { break }
+
+            guard let edgeCount = readInt32() else { entries.removeAll(); return false }
             var edges: [EdgeEntry] = []
             for _ in 0..<edgeCount {
                 if let target = readString(), let eType = readString() {

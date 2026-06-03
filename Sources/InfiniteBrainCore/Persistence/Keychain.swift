@@ -40,14 +40,31 @@ public final class SystemKeychain: KeychainStore, @unchecked Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
         ]
-        let delStatus = SecItemDelete(base as CFDictionary)
-        if delStatus != errSecSuccess && delStatus != errSecItemNotFound {
-            throw KeychainError.osStatus(delStatus)
+
+        // Clearing the value: delete the item.
+        guard let value, let data = value.data(using: .utf8) else {
+            let del = SecItemDelete(base as CFDictionary)
+            if del != errSecSuccess && del != errSecItemNotFound { throw KeychainError.osStatus(del) }
+            return
         }
-        guard let value, let data = value.data(using: .utf8) else { return }
-        var add = base
-        add[kSecValueData as String] = data
-        let addStatus = SecItemAdd(add as CFDictionary, nil)
-        if addStatus != errSecSuccess { throw KeychainError.osStatus(addStatus) }
+
+        // `…ThisDeviceOnly` keeps the API key off iCloud Keychain and out of
+        // backups. Update-in-place when the item exists (instead of delete-then-add,
+        // which had a window where an interrupted call left the key gone).
+        let attrs: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        let updateStatus = SecItemUpdate(base as CFDictionary, attrs as CFDictionary)
+        if updateStatus == errSecSuccess { return }
+        if updateStatus == errSecItemNotFound {
+            var add = base
+            add[kSecValueData as String] = data
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            let addStatus = SecItemAdd(add as CFDictionary, nil)
+            if addStatus != errSecSuccess { throw KeychainError.osStatus(addStatus) }
+            return
+        }
+        throw KeychainError.osStatus(updateStatus)
     }
 }
