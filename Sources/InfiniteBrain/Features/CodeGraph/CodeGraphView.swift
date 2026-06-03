@@ -576,12 +576,14 @@ struct CodeGraphView: View {
             fileURL = URL(fileURLWithPath: urlString)
         }
 
-        // Security: only open files under the selected folder.
-        if let root = targetFolder {
-            let rootPath = root.standardizedFileURL.path
-            let filePath = fileURL.standardizedFileURL.path
-            guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
-        }
+        // Security: only ever reveal files under the selected folder. The guard
+        // is UNCONDITIONAL — when no folder is selected (e.g. a graph loaded from
+        // an imported knowledge-graph.json whose node fileURLs are untrusted),
+        // refuse rather than revealing an arbitrary absolute path.
+        guard let root = targetFolder else { return }
+        let rootPath = root.standardizedFileURL.path
+        let filePath = fileURL.standardizedFileURL.path
+        guard filePath.hasPrefix(rootPath + "/") || filePath == rootPath else { return }
 
         // Reveal + select in Finder — always works immediately.
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
