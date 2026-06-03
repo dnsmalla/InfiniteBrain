@@ -88,8 +88,13 @@ public struct CLIProcessRunner: Sendable {
         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
 
         guard task.terminationStatus == 0 else {
-            let stderr = String(data: errData, encoding: .utf8) ?? ""
-            throw CLIClientError.nonzeroExit(task.terminationStatus, stderr: stderr)
+            // CLIs like `claude` print auth/quota errors (e.g. a 401) to stdout,
+            // not stderr. Fall back to stdout so the failure is diagnosable
+            // instead of surfacing an empty `stderr: ""`.
+            let err = String(data: errData, encoding: .utf8) ?? ""
+            let out = String(data: outData, encoding: .utf8) ?? ""
+            let detail = err.isEmpty ? out.trimmingCharacters(in: .whitespacesAndNewlines) : err
+            throw CLIClientError.nonzeroExit(task.terminationStatus, stderr: detail)
         }
         guard let s = String(data: outData, encoding: .utf8) else {
             throw CLIClientError.noOutput

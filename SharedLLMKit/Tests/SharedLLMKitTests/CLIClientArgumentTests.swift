@@ -6,7 +6,7 @@ import XCTest
 final class CLIClientArgumentTests: XCTestCase {
     func testClaudeArgumentsHaveExpectedFlagsInOrder() {
         let args = ClaudeCLIClient.arguments(prompt: "hello")
-        XCTAssertEqual(args, ["-p", "hello", "--output-format", "text", "--allow-dangerously-skip-permissions"])
+        XCTAssertEqual(args, ["-p", "hello", "--output-format", "text", "--permission-mode", "acceptEdits"])
     }
 
     func testCodexArgumentsCarryOutputFileAndReadOnlySandbox() {

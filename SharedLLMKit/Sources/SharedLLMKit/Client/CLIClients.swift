@@ -38,9 +38,14 @@ public struct ClaudeCLIClient: LLMClient {
         )
     }
 
-    /// `claude -p <prompt> --output-format text --allow-dangerously-skip-permissions`
+    /// `claude -p <prompt> --output-format text --permission-mode acceptEdits`
+    ///
+    /// Uses `--permission-mode acceptEdits` (not `--allow-dangerously-skip-permissions`):
+    /// the dangerous-skip flag is gated to API-key auth and returns HTTP 401 under a
+    /// Claude *subscription* login. `acceptEdits` is the subscription-friendly path and
+    /// matches the invocation used by the sibling meet-notes app.
     public static func arguments(prompt: String) -> [String] {
-        ["-p", prompt, "--output-format", "text", "--allow-dangerously-skip-permissions"]
+        ["-p", prompt, "--output-format", "text", "--permission-mode", "acceptEdits"]
     }
 }
 
