@@ -186,7 +186,8 @@ public final class DraftingViewModel: ObservableObject {
             }
             self.searchResults = notes
         } catch {
-            print("Search error: \(error)")
+            self.error = "Search failed: \(error.localizedDescription)"
+            LogService.shared.error("note search failed", category: .query, error: error)
         }
     }
     
@@ -244,7 +245,15 @@ public final class DraftingViewModel: ObservableObject {
                         }
                     }
 
-                    _ = try? await orchestrator.ingest(file: targetURL, into: vault)
+                    do {
+                        _ = try await orchestrator.ingest(file: targetURL, into: vault)
+                    } catch {
+                        LogService.shared.error("background index failed for \(fileURL.lastPathComponent)",
+                                                category: .ingest, error: error)
+                        await MainActor.run {
+                            self.error = "Failed to index \(fileURL.lastPathComponent): \(error.localizedDescription)"
+                        }
+                    }
 
                     await MainActor.run {
                         self.backgroundIngestionCount = max(0, self.backgroundIngestionCount - 1)
@@ -254,6 +263,15 @@ public final class DraftingViewModel: ObservableObject {
                             self.ingestionStatus = nil
                         }
                     }
+                }
+            } catch {
+                // make() / setup failed — without this catch the error vanished and
+                // the "Indexing…" status pill spun forever.
+                LogService.shared.error("background indexing setup failed", category: .ingest, error: error)
+                await MainActor.run {
+                    self.error = "Background indexing failed: \(error.localizedDescription)"
+                    self.backgroundIngestionCount = 0
+                    self.ingestionStatus = nil
                 }
             }
         }
@@ -315,7 +333,8 @@ public final class DraftingViewModel: ObservableObject {
             let data = try JSONEncoder().encode(session)
             try data.write(to: fileURL)
         } catch {
-            print("Failed to save session: \(error)")
+            self.error = "Couldn't save draft session: \(error.localizedDescription)"
+            LogService.shared.error("draft session save failed", category: .vault, error: error)
         }
     }
 
