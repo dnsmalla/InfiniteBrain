@@ -86,9 +86,10 @@ public actor VaultStore {
         guard let url = try await locateFile(forId: id) else {
             throw VaultStoreError.notFound(id: id)
         }
-        if (try? await read(id: id)) != nil {
-            await metadataIndex.remove(noteId: id)
-        }
+        // Remove the index entry unconditionally — gating on a successful read
+        // meant a corrupt/unparseable note left a dangling index entry (ghost
+        // node) after its file was deleted.
+        await metadataIndex.remove(noteId: id)
         try FileManager.default.removeItem(at: url)
         pathCache.removeValue(forKey: id)
     }

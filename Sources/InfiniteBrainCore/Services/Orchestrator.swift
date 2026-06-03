@@ -469,7 +469,10 @@ public actor Orchestrator {
                 updatedAt: writeNow,
                 needsReview: lowConfidence
             )
-            await metadataIndex?.update(note)
+            // NOTE: do not update the metadata index here. The note hasn't been
+            // written to disk yet (that happens in Phase B), and VaultStore.write
+            // updates the index itself. Updating here created an index entry for a
+            // note that might never be written if the write later fails → divergence.
             if !nearest.isEmpty {
                 let inferred = (try? await skillRunner.run(
                     "infer-edges",
