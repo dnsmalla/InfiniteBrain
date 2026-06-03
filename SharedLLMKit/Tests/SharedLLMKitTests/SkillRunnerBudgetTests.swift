@@ -76,7 +76,8 @@ actor CapturingClient: LLMClient {
     private let response: String
     init(response: String) { self.response = response }
 
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(system: String, user: String, responseSchema: [String: Any]?,
+                  onUsage: (@Sendable (LLMUsage) -> Void)? = nil) async throws -> String {
         calls.append(Call(system: system, user: user))
         return response
     }

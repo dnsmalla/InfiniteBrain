@@ -93,7 +93,8 @@ actor SequenceClient: LLMClient {
     private(set) var calls: [Call] = []
     init(responses: [String]) { self.queue = responses }
 
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(system: String, user: String, responseSchema: [String: Any]?,
+                  onUsage: (@Sendable (LLMUsage) -> Void)? = nil) async throws -> String {
         calls.append(Call(system: system, user: user))
         guard !queue.isEmpty else {
             throw NSError(domain: "SequenceClient", code: 0)

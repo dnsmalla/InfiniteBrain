@@ -107,7 +107,8 @@ actor FakeLLMClient: LLMClient {
 
     init(responses: [String]) { self.responses = responses }
 
-    func complete(system: String, user: String, responseSchema: [String: Any]?) async throws -> String {
+    func complete(system: String, user: String, responseSchema: [String: Any]?,
+                  onUsage: (@Sendable (LLMUsage) -> Void)? = nil) async throws -> String {
         calls.append(Call(system: system, user: user))
         guard !responses.isEmpty else {
             throw NSError(domain: "FakeLLMClient", code: 0)

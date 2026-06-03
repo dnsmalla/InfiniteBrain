@@ -1,3 +1,16 @@
+---
+name: identify-missing-context
+description: Analyzes retrieved context against a question and identifies missing entities, follow-up note ids, and search keywords for a deeper research pass.
+model: claude-sonnet-4-6
+inputs:
+  question: string
+  known: array
+outputs:
+  missing_entities: array
+  follow_note_ids: array
+  rationale: string
+---
+
 # Identify Missing Context Skill
 
 ## Role
