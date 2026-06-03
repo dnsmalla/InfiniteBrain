@@ -26,6 +26,7 @@ let package = Package(
                 .copy("Resources/rules"),
                 .copy("Resources/web"),
                 .copy("Resources/code_ast_scan.py"),
+                .copy("Resources/code_graph_scan.py"),
             ]
         ),
         .executableTarget(
