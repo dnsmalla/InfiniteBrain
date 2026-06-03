@@ -13,15 +13,15 @@ Consolidated from a 5-pass read-only review (services, persistence, security, Sh
 
 ## HIGH
 
-- [ ] **H1 — NoteSerializer corrupts notes whose body contains `---` or `key:`** (`NoteSerializer.swift:50`). A markdown horizontal rule is read as the frontmatter fence → data loss. Use a real YAML parse for frontmatter (Yams is already in the dependency tree via GraphKit) or require the 2nd fence + treat the remainder as opaque body. Add a round-trip property test.
+- [x] **H1 (verified non-issue) — NoteSerializer corrupts notes whose body contains `---` or `key:`** (`NoteSerializer.swift:50`). A markdown horizontal rule is read as the frontmatter fence → data loss. Use a real YAML parse for frontmatter (Yams is already in the dependency tree via GraphKit) or require the 2nd fence + treat the remainder as opaque body. Add a round-trip property test.
 - [x] **H2 — Prompt leaked via process argv.** `claude -p <prompt>` and `cursor … <prompt>` put verbatim vault content in argv (world-readable via `ps`). Codex already pipes via stdin — do the same for claude (plumbing exists).
-- [ ] **H3 — `openNode` path-traversal guard skipped when `targetFolder == nil`** (`CodeGraphView.swift:567-588`) + `UAParser.resolveFileURL` returns arbitrary absolute paths. Make the guard unconditional; clamp paths to the repo root at parse time (GraphKit).
+- [x] **H3 — `openNode` path-traversal guard skipped when `targetFolder == nil`** (`CodeGraphView.swift:567-588`) + `UAParser.resolveFileURL` returns arbitrary absolute paths. Make the guard unconditional; clamp paths to the repo root at parse time (GraphKit).
 - [x] **H4 — DraftingViewModel: import has no `catch` → stuck spinner + lost errors** (`:218-258`); `searchNotes`/`saveSession` swallow to `print()` (`:189,318`). Add catch, surface `error`, log via LogService, drop prints.
 - [x] **H5 — AnthropicClient: no request timeout, no cancellation checks, drops multi-block/thinking responses** (`AnthropicClient.swift:79,103,121-130`). Set `timeoutInterval`; check cancellation between retries; concatenate all `type==text` blocks.
 - [x] **H6 (verified non-issue) — SkillRunner conflates transport errors with validation failures** (`SkillRunner.swift:44-57`) → a 401 is reported as "invalid output". Separate the `complete` call from the validation try/catch.
-- [ ] **H7 — No timeout on any LLM/embedding call in the ingest pipeline** (`Orchestrator decideOne`). A hung provider call stalls a slot forever (overnight-ingest hazard). Wrap each call in a timeout → quarantine on expiry.
-- [ ] **H8 — ULID generator ignores injected `DateProvider`, uses `Date()` + full re-roll** (`IDGenerator.swift:18-35`); collision → silent note overwrite (`VaultStore.write` clobbers). Use DateProvider, monotonic randomness, refuse clobber.
-- [ ] **H9 — Empty `slugify` result commingles sources** (`VaultStore.swift:122-160`): punctuation/emoji-only titles → `""` → shared folder. Fall back to note id.
+- [x] **H7 (addressed by H5 + CR2/CR3 transport timeouts) — No timeout on any LLM/embedding call in the ingest pipeline** (`Orchestrator decideOne`). A hung provider call stalls a slot forever (overnight-ingest hazard). Wrap each call in a timeout → quarantine on expiry.
+- [x] **H8 — ULID generator ignores injected `DateProvider`, uses `Date()` + full re-roll** (`IDGenerator.swift:18-35`); collision → silent note overwrite (`VaultStore.write` clobbers). Use DateProvider, monotonic randomness, refuse clobber.
+- [x] **H9 — Empty `slugify` result commingles sources** (`VaultStore.swift:122-160`): punctuation/emoji-only titles → `""` → shared folder. Fall back to note id.
 - [ ] **H10 — Index files load partial on truncation, silently** (`MetadataIndex.swift:67-75`, `EmbeddingIndex.swift:83-104`). Add magic+version/length trailer; on mismatch error + trigger `IndexRebuilder`.
 
 ## MEDIUM
