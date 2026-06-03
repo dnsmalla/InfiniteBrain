@@ -227,10 +227,16 @@ public actor Orchestrator {
         try await withThrowingTaskGroup(of: WorkResult.self) { group in
             var chunkIterator = pendingIndices.makeIterator()
             var activeLLMCalls = 0
-            
-            // Local helper to launch next chunk if we have capacity
-            func launchNextChunk() {
-                guard activeLLMCalls < concurrency, let i = chunkIterator.next() else { return }
+            // Units produced by atomized chunks, waiting for a free slot. Draining
+            // these before atomizing new chunks bounds in-flight work (and memory)
+            // to `concurrency` regardless of how many units a chunk yields.
+            var pendingUnits: [(chunkIndex: Int, unit: [String: Any], reservedId: String)] = []
+
+            // Each launcher increments `activeLLMCalls` exactly once; the main loop
+            // decrements exactly once per received WorkResult. This is the single
+            // accounting model that actually enforces `concurrency`.
+            func launchChunk() -> Bool {
+                guard activeLLMCalls < concurrency, let i = chunkIterator.next() else { return false }
                 activeLLMCalls += 1
                 group.addTask {
                     let chunk = chunks[i]
@@ -252,10 +258,50 @@ public actor Orchestrator {
                         return .error("chunk \(i + 1) atomize failed: \(Self.brief(error))")
                     }
                 }
+                return true
             }
 
-            // Start initial chunks
-            for _ in 0..<concurrency { launchNextChunk() }
+            func launchUnit() -> Bool {
+                guard activeLLMCalls < concurrency, !pendingUnits.isEmpty else { return false }
+                let item = pendingUnits.removeFirst()
+                activeLLMCalls += 1
+                group.addTask { [self] in
+                    do {
+                        let outcome = try await self.decideOne(
+                            unit: item.unit, reservedId: item.reservedId,
+                            sourceId: sourceId, sourceLabel: label, store: store
+                        )
+                        var local = IngestResult()
+                        switch outcome {
+                        case .skip: local.skipped += 1
+                        case .quarantine: local.quarantined += 1
+                        case .improve(let updated):
+                            try await store.write(updated, in: sourceFolder)
+                            local.improved += 1
+                        case .add(let note, let vector):
+                            try await store.write(note, in: sourceFolder)
+                            if let index = self.index, let vector = vector { await index.record(id: note.id, vector: vector) }
+                            local.added += 1
+                        }
+                        return .unitProcessed(chunkIndex: item.chunkIndex, result: local)
+                    } catch {
+                        await self.progress("unit failed (\(Self.brief(error))) — quarantined")
+                        var local = IngestResult()
+                        local.quarantined += 1
+                        return .unitProcessed(chunkIndex: item.chunkIndex, result: local)
+                    }
+                }
+                return true
+            }
+
+            // Fill available capacity, preferring to finish in-flight chunks' units
+            // before atomizing more chunks. Stops launching new work once cancelled.
+            func pump() {
+                guard !Task.isCancelled else { return }
+                while launchUnit() || launchChunk() {}
+            }
+
+            pump()
             
             while let work = try await group.next() {
                 switch work {
@@ -264,57 +310,24 @@ public actor Orchestrator {
                     if units.isEmpty {
                         _ = try? await checkpoints.markChunkComplete(fileHash: fileHash, chunkIndex: i)
                         await progress("chunk \(i + 1)/\(total) done (empty)")
-                        launchNextChunk()
                     } else {
                         pendingUnitsPerChunk[i] = units.count
                         chunkResults[i] = IngestResult()
                         await progress("chunk \(i + 1)/\(total): atomized → \(units.count) unit(s)")
-                        // Launch units up to capacity
+                        // Queue units; pump() launches them up to capacity.
                         for unit in units {
-                            let reservedId = idGenerator.next()
-                            group.addTask { [self] in
-                                activeLLMCalls += 1
-                                defer { activeLLMCalls -= 1 }
-                                do {
-                                    let outcome = try await self.decideOne(
-                                        unit: unit, reservedId: reservedId,
-                                        sourceId: sourceId, sourceLabel: label, store: store
-                                    )
-                                    var local = IngestResult()
-                                    switch outcome {
-                                    case .skip: local.skipped += 1
-                                    case .quarantine: local.quarantined += 1
-                                    case .improve(let updated):
-                                        // Use `try` (not `try?`): a failed write must not be
-                                        // counted as "improved". It falls to the catch below.
-                                        try await store.write(updated, in: sourceFolder)
-                                        local.improved += 1
-                                    case .add(let note, let vector):
-                                        try await store.write(note, in: sourceFolder)
-                                        if let index = self.index, let vector = vector { await index.record(id: note.id, vector: vector) }
-                                        local.added += 1
-                                    }
-                                    return .unitProcessed(chunkIndex: i, result: local)
-                                } catch {
-                                    // Surface the failure instead of silently quarantining —
-                                    // masks real IO/parse errors otherwise.
-                                    await self.progress("unit failed (\(Self.brief(error))) — quarantined")
-                                    var local = IngestResult()
-                                    local.quarantined += 1
-                                    return .unitProcessed(chunkIndex: i, result: local)
-                                }
-                            }
+                            pendingUnits.append((chunkIndex: i, unit: unit, reservedId: idGenerator.next()))
                         }
-                        // While units are running, we might still have room for next chunk
-                        launchNextChunk()
                     }
+                    pump()
 
                 case .unitProcessed(let i, let r):
+                    activeLLMCalls -= 1
                     result.added += r.added
                     result.improved += r.improved
                     result.skipped += r.skipped
                     result.quarantined += r.quarantined
-                    
+
                     if var current = chunkResults[i] {
                         current.added += r.added
                         current.improved += r.improved
@@ -322,7 +335,7 @@ public actor Orchestrator {
                         current.quarantined += r.quarantined
                         chunkResults[i] = current
                     }
-                    
+
                     pendingUnitsPerChunk[i, default: 0] -= 1
                     if pendingUnitsPerChunk[i] == 0 {
                         let final = chunkResults[i] ?? IngestResult()
@@ -330,12 +343,12 @@ public actor Orchestrator {
                         await progress("chunk \(i + 1)/\(total) done: +\(final.added) added, \(final.improved) improved")
                         if let index { try? await index.flush() }
                     }
-                    launchNextChunk()
+                    pump()
 
                 case .error(let msg):
                     activeLLMCalls -= 1
                     await progress(msg)
-                    launchNextChunk()
+                    pump()
                 }
             }
         }
