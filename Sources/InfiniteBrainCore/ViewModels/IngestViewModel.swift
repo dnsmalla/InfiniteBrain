@@ -164,7 +164,7 @@ public final class IngestViewModel: ObservableObject {
         do { try VaultInitializer().ensureSeeded(vault: vault) }
         catch { append("could not seed vault: \(error.localizedDescription)") }
         
-        let indexURL = vault.sidecar.appendingPathComponent("embeddings.bin")
+        let indexURL = vault.embeddingIndexURL
         let index = EmbeddingIndex(storeURL: indexURL)
         try? await index.load()
 

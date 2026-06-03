@@ -51,7 +51,7 @@ struct InfiniteBrainCLI {
 
         let skillsRoot = BundledResources.skillsRoot(for: vault)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
-        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
+        let index = EmbeddingIndex(storeURL: vault.embeddingIndexURL)
         try? await index.load()
         let orch = Orchestrator(
             skillRunner: runner,
@@ -87,7 +87,7 @@ struct InfiniteBrainCLI {
         let vault = Vault(root: URL(fileURLWithPath: vaultPath))
         let skillsRoot = BundledResources.skillsRoot(for: vault)
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
-        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.json"))
+        let index = EmbeddingIndex(storeURL: vault.embeddingIndexURL)
         try? await index.load()
         let service = QueryService(
             skillRunner: runner,
@@ -117,7 +117,7 @@ struct InfiniteBrainCLI {
         )
         // Quick sanity probe — count entries via a generous nearest call.
         let allHits = await index.nearest(to: [Float](repeating: 0.001, count: 512), k: 100_000)
-        print("indexed \(allHits.count) note(s) at \(vault.sidecar.appendingPathComponent("embeddings.json").path)")
+        print("indexed \(allHits.count) note(s) at \(vault.embeddingIndexURL.path)")
     }
 
     static func runSeed(_ args: [String]) throws {

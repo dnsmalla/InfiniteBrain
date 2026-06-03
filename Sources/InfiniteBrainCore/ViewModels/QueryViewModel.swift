@@ -49,7 +49,7 @@ public final class QueryViewModel: ObservableObject {
 
         let runner = SkillRunner(client: client, skillsRoot: skillsRoot)
         let store = VaultStore(vault: vault)
-        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.bin"))
+        let index = EmbeddingIndex(storeURL: vault.embeddingIndexURL)
         try? await index.load()
 
         let service = QueryService(

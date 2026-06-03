@@ -172,7 +172,7 @@ public final class DraftingViewModel: ObservableObject {
             let v = Vault(root: vaultURL)
             let store = VaultStore(vault: v)
             let embeddings = NLEmbeddingProvider()
-            let index = EmbeddingIndex(storeURL: v.sidecar.appendingPathComponent("embeddings.bin"))
+            let index = EmbeddingIndex(storeURL: v.embeddingIndexURL)
             try? await index.load()
             
             let vector = try await embeddings.embed(noteSearchQuery)
@@ -293,7 +293,7 @@ public final class DraftingViewModel: ObservableObject {
         }
         
         let store = VaultStore(vault: vault)
-        let index = EmbeddingIndex(storeURL: vault.sidecar.appendingPathComponent("embeddings.bin"))
+        let index = EmbeddingIndex(storeURL: vault.embeddingIndexURL)
         try? await index.load()
 
         return DraftingService(

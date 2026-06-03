@@ -36,7 +36,7 @@ public final class UnifiedIngestionService {
     
     public static func makeOrchestrator(vault: Vault, client: LLMClient, concurrency: Int, onProgress: @escaping ProgressHandler, onUsage: @escaping UsageHandler) -> Orchestrator {
         let store = VaultStore(vault: vault)
-        let indexURL = vault.sidecar.appendingPathComponent("embeddings.bin")
+        let indexURL = vault.embeddingIndexURL
         let index = EmbeddingIndex(storeURL: indexURL)
         
         return Orchestrator(

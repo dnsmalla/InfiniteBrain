@@ -16,7 +16,7 @@ public enum IndexRebuilder {
         let store = VaultStore(vault: vault)
         let notes = try await store.allNotes()
 
-        let indexURL = vault.sidecar.appendingPathComponent("embeddings.bin")
+        let indexURL = vault.embeddingIndexURL
         try? FileManager.default.removeItem(at: indexURL)
         let index = EmbeddingIndex(storeURL: indexURL)
 

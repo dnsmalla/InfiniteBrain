@@ -207,7 +207,7 @@ struct HelpView: View {
             │       ├── fact/<id>--<slug>.md
             │       └── concept/<id>--<slug>.md
             └── .infinitebrain/
-                ├── embeddings.json                 vector index, rebuildable
+                ├── embeddings.bin                 vector index, rebuildable
                 ├── checkpoints/sha256-<hash>.json  per-file resume state
                 ├── skills/<name>/SKILL.md          editable per-vault prompts
                 └── rules/*.mdc                     cross-cutting policies
@@ -293,7 +293,7 @@ struct HelpView: View {
                 troubleRow("Vault tab is empty after ingest",
                            "Click Refresh in the toolbar. The browser walks notes/<source>/<type>/ recursively; legacy notes/<type>/ also work.")
                 troubleRow("Index out of sync (Query returns nothing)",
-                           "Run `infb reindex <vault>` to rebuild embeddings.json from the markdown on disk.")
+                           "Run `infb reindex <vault>` to rebuild embeddings.bin from the markdown on disk.")
             }
         }
     }
