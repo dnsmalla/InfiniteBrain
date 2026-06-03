@@ -67,25 +67,48 @@ public struct CLIProcessRunner: Sendable {
         task.standardInput = inPipe
         task.environment = env ?? Self.defaultEnvironment()
 
-        try task.run()
+        // Drain stdout/stderr on background queues *before* waiting. OS pipe
+        // buffers are bounded (~64KB); reading only after exit would deadlock a
+        // child that writes more than that (it blocks on write, never exits).
+        final class DataBox: @unchecked Sendable { var data = Data() }
+        let outBox = DataBox(), errBox = DataBox()
+        let drain = DispatchGroup()
+        let q = DispatchQueue.global(qos: .userInitiated)
 
-        // Feed stdin if provided, then close so the child sees EOF.
-        if let stdin {
-            inPipe.fileHandleForWriting.write(stdin)
-        }
-        try? inPipe.fileHandleForWriting.close()
-
-        // Wait for termination with a timeout. Process.waitUntilExit doesn't
-        // expose a timeout, so we use a semaphore + termination handler.
         let sem = DispatchSemaphore(value: 0)
         task.terminationHandler = { _ in sem.signal() }
+
+        try task.run()
+
+        drain.enter(); q.async { outBox.data = outPipe.fileHandleForReading.readDataToEndOfFile(); drain.leave() }
+        drain.enter(); q.async { errBox.data = errPipe.fileHandleForReading.readDataToEndOfFile(); drain.leave() }
+
+        // Feed stdin on a background queue too, so a large prompt (which may
+        // exceed the pipe buffer) can't deadlock against the child reading it.
+        if let stdin {
+            q.async {
+                inPipe.fileHandleForWriting.write(stdin)
+                try? inPipe.fileHandleForWriting.close()
+            }
+        } else {
+            try? inPipe.fileHandleForWriting.close()
+        }
+
         if sem.wait(timeout: .now() + timeout) == .timedOut {
+            // Escalate: SIGTERM, brief grace, then SIGKILL; reap so we don't
+            // leak the process or its pipe file descriptors.
             task.terminate()
+            if drain.wait(timeout: .now() + 2) == .timedOut, task.isRunning {
+                kill(task.processIdentifier, SIGKILL)
+            }
+            task.waitUntilExit()
             throw CLIClientError.timedOut
         }
 
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        // Process exited; ensure both readers have hit EOF before using buffers.
+        drain.wait()
+        let outData = outBox.data
+        let errData = errBox.data
 
         guard task.terminationStatus == 0 else {
             // CLIs like `claude` print auth/quota errors (e.g. a 401) to stdout,
