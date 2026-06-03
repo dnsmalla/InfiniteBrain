@@ -5,8 +5,9 @@ import XCTest
 /// `claude` / `codex` / `cursor` install on the user's machine just works.
 final class CLIClientArgumentTests: XCTestCase {
     func testClaudeArgumentsHaveExpectedFlagsInOrder() {
-        let args = ClaudeCLIClient.arguments(prompt: "hello")
-        XCTAssertEqual(args, ["-p", "hello", "--output-format", "text", "--permission-mode", "acceptEdits"])
+        // Prompt is fed on stdin (not argv) so vault content stays out of `ps`.
+        let args = ClaudeCLIClient.arguments()
+        XCTAssertEqual(args, ["-p", "--output-format", "text", "--permission-mode", "acceptEdits"])
     }
 
     func testCodexArgumentsCarryOutputFileAndReadOnlySandbox() {

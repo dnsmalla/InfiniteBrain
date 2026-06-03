@@ -30,10 +30,13 @@ public struct ClaudeCLIClient: LLMClient {
         onUsage: (@Sendable (LLMUsage) -> Void)?
     ) async throws -> String {
         let prompt = PromptMerge.merge(system: system, user: user)
+        // Prompt goes on stdin, not argv: vault note content would otherwise be
+        // world-readable via `ps`. `claude -p` reads the prompt from stdin when
+        // none is supplied positionally.
         return try runner.run(
             executable: executablePath,
-            arguments: Self.arguments(prompt: prompt),
-            stdin: Data(),
+            arguments: Self.arguments(),
+            stdin: Data(prompt.utf8),
             timeout: timeout,
             env: Self.subscriptionEnvironment()
         )
@@ -51,14 +54,15 @@ public struct ClaudeCLIClient: LLMClient {
         return env
     }
 
-    /// `claude -p <prompt> --output-format text --permission-mode acceptEdits`
+    /// `claude -p --output-format text --permission-mode acceptEdits` (prompt via stdin).
     ///
     /// Uses `--permission-mode acceptEdits` (not `--allow-dangerously-skip-permissions`):
     /// the dangerous-skip flag is gated to API-key auth and returns HTTP 401 under a
     /// Claude *subscription* login. `acceptEdits` is the subscription-friendly path and
-    /// matches the invocation used by the sibling meet-notes app.
-    public static func arguments(prompt: String) -> [String] {
-        ["-p", prompt, "--output-format", "text", "--permission-mode", "acceptEdits"]
+    /// matches the invocation used by the sibling meet-notes app. The prompt is fed on
+    /// stdin (see `complete`) so it never appears in the process argument list.
+    public static func arguments() -> [String] {
+        ["-p", "--output-format", "text", "--permission-mode", "acceptEdits"]
     }
 }
 
