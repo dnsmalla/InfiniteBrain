@@ -61,6 +61,7 @@ public struct AnthropicClient: LLMClient {
     ) async throws -> String {
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
+        req.timeoutInterval = 120   // bound a hung connection instead of waiting forever
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         req.setValue("application/json", forHTTPHeaderField: "content-type")
@@ -76,6 +77,7 @@ public struct AnthropicClient: LLMClient {
         var lastStatus = 0
         var lastBody = ""
         for attempt in 0..<retryPolicy.maxAttempts {
+            try Task.checkCancellation()   // stop retrying once the caller cancels
             let (data, response) = try await session.data(for: req)
             guard let http = response as? HTTPURLResponse else {
                 throw AnthropicClientError.malformedResponse("not an HTTPURLResponse")
@@ -120,10 +122,18 @@ public struct AnthropicClient: LLMClient {
 
     private static func extractText(from data: Data) throws -> String {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = obj["content"] as? [[String: Any]],
-              let first = content.first,
-              let text = first["text"] as? String
+              let content = obj["content"] as? [[String: Any]]
         else {
+            throw AnthropicClientError.malformedResponse(String(data: data, encoding: .utf8) ?? "<binary>")
+        }
+        // Concatenate all text blocks. Extended-thinking / tool-use responses can
+        // lead with a non-text block or split text across blocks; taking only the
+        // first block would throw or truncate.
+        let text = content
+            .filter { ($0["type"] as? String) == "text" }
+            .compactMap { $0["text"] as? String }
+            .joined()
+        guard !text.isEmpty else {
             throw AnthropicClientError.malformedResponse(String(data: data, encoding: .utf8) ?? "<binary>")
         }
         return text
