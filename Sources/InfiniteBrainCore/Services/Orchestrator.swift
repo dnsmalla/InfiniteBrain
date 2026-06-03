@@ -284,15 +284,20 @@ public actor Orchestrator {
                                     case .skip: local.skipped += 1
                                     case .quarantine: local.quarantined += 1
                                     case .improve(let updated):
-                                        try? await store.write(updated, in: sourceFolder)
+                                        // Use `try` (not `try?`): a failed write must not be
+                                        // counted as "improved". It falls to the catch below.
+                                        try await store.write(updated, in: sourceFolder)
                                         local.improved += 1
                                     case .add(let note, let vector):
-                                        try? await store.write(note, in: sourceFolder)
+                                        try await store.write(note, in: sourceFolder)
                                         if let index = self.index, let vector = vector { await index.record(id: note.id, vector: vector) }
                                         local.added += 1
                                     }
                                     return .unitProcessed(chunkIndex: i, result: local)
                                 } catch {
+                                    // Surface the failure instead of silently quarantining —
+                                    // masks real IO/parse errors otherwise.
+                                    await self.progress("unit failed (\(Self.brief(error))) — quarantined")
                                     var local = IngestResult()
                                     local.quarantined += 1
                                     return .unitProcessed(chunkIndex: i, result: local)
@@ -419,10 +424,16 @@ public actor Orchestrator {
             return .skip
 
         case "improve":
-            guard let targetId = reconciled["target_id"] as? String else { return .quarantine }
+            guard let targetId = reconciled["target_id"] as? String else {
+                await progress("reconcile said 'improve' but gave no target_id — quarantined")
+                return .quarantine
+            }
             let existing: Note
             do { existing = try await store.read(id: targetId) }
-            catch { return .quarantine }
+            catch {
+                await progress("couldn't read improve target \(targetId) (\(Self.brief(error))) — quarantined")
+                return .quarantine
+            }
             let improved = try await skillRunner.run(
                 "improve-note",
                 input: [
