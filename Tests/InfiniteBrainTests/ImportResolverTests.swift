@@ -56,4 +56,24 @@ final class ImportResolverTests: XCTestCase {
     func testNormalizeDot() {
         XCTAssertEqual(ImportResolver.normalize(joining: "src", "./foo"), "src/foo")
     }
+
+    func testAliasImportResolved() {
+        let aliases = ["@/": "src/"]
+        let imp = RawImport(module: "@/lib/api")
+        let result = ImportResolver.resolve(imp, fromFile: "src/components/Card.tsx",
+                                            language: "typescript",
+                                            files: ["src/lib/api.ts"],
+                                            aliases: aliases)
+        XCTAssertEqual(result, "src/lib/api.ts")
+    }
+
+    func testAliasWithNoMatchStillReturnsNil() {
+        let aliases = ["@/": "src/"]
+        let imp = RawImport(module: "@/missing/thing")
+        let result = ImportResolver.resolve(imp, fromFile: "src/app.ts",
+                                            language: "typescript",
+                                            files: ["src/other.ts"],
+                                            aliases: aliases)
+        XCTAssertNil(result)
+    }
 }
