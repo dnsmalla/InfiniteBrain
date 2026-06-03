@@ -34,8 +34,21 @@ public struct ClaudeCLIClient: LLMClient {
             executable: executablePath,
             arguments: Self.arguments(prompt: prompt),
             stdin: Data(),
-            timeout: timeout
+            timeout: timeout,
+            env: Self.subscriptionEnvironment()
         )
+    }
+
+    /// Environment for the subscription `claude` CLI: the inherited environment
+    /// with `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` removed. If those are
+    /// present (e.g. exported to GUI apps via `launchctl setenv`), `claude`
+    /// prefers them over its stored subscription OAuth and a stale value yields
+    /// a 401. Stripping them forces subscription auth.
+    static func subscriptionEnvironment() -> [String: String] {
+        var env = CLIProcessRunner.defaultEnvironment()
+        env.removeValue(forKey: "ANTHROPIC_API_KEY")
+        env.removeValue(forKey: "ANTHROPIC_AUTH_TOKEN")
+        return env
     }
 
     /// `claude -p <prompt> --output-format text --permission-mode acceptEdits`
