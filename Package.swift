@@ -36,12 +36,18 @@ let package = Package(
         ),
         .executableTarget(
             name: "InfiniteBrainCLI",
-            dependencies: ["InfiniteBrainCore"],
+            dependencies: [
+                "InfiniteBrainCore",
+                .product(name: "GraphKit", package: "graph-kit"),
+            ],
             path: "Sources/InfiniteBrainCLI"
         ),
         .testTarget(
             name: "InfiniteBrainTests",
-            dependencies: ["InfiniteBrainCore"],
+            dependencies: [
+                "InfiniteBrainCore",
+                .product(name: "GraphKit", package: "graph-kit"),
+            ],
             path: "Tests/InfiniteBrainTests",
             resources: [
                 .copy("Fixtures")

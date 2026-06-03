@@ -1,4 +1,5 @@
 import Foundation
+import GraphKit
 import SwiftUI
 import CryptoKit
 import SharedLLMKit

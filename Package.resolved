@@ -5,8 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/dnsmalla/graph-kit.git",
       "state" : {
-        "revision" : "ef3cefc1c207ff63910f4f3939c81ddb94c47e0b",
-        "version" : "1.0.1"
+        "revision" : "5bf732358f5a0c1056b847553987161b7e0503be",
+        "version" : "1.1.0"
       }
     },
     {

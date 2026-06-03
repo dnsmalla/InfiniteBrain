@@ -1,4 +1,5 @@
 import Foundation
+import GraphKit
 import CryptoKit
 import SharedLLMKit
 
