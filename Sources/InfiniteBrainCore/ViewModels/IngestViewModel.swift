@@ -204,7 +204,7 @@ public final class IngestViewModel: ObservableObject {
             for file in droppedFiles {
                 group.addTask {
                     let bytes = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64) ?? 0
-                    let approxChunks = max(1, Int(bytes) / 16_000)
+                    let approxChunks = max(1, Int(bytes) / Orchestrator.defaultChunkSize)
                     let fileName = file.lastPathComponent
                     await self.appendFormattedIngestStart(fileName: fileName, bytes: bytes, approxChunks: approxChunks)
                     

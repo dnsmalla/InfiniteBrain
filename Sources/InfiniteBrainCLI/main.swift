@@ -58,7 +58,7 @@ struct InfiniteBrainCLI {
             checkpoints: CheckpointStore(vault: vault),
             embeddings: NLEmbeddingProvider(),
             index: index,
-            chunkSize: parsed.chunkSize ?? 16_000,
+            chunkSize: parsed.chunkSize ?? Orchestrator.defaultChunkSize,
             onProgress: { line in print("   · \(line)") }
         )
 

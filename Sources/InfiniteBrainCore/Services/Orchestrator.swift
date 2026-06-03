@@ -42,6 +42,10 @@ public typealias ProgressHandler = @Sendable (String) async -> Void
 public typealias UsageHandler = @Sendable (LLMUsage) -> Void
 
 public actor Orchestrator {
+    /// Default characters per chunk. Single source of truth so the CLI default
+    /// and the IngestViewModel "~N chunks" estimate can't drift from it.
+    public static let defaultChunkSize = 16_000
+
     public let checkpoints: CheckpointStore
     public let skillRunner: SkillRunner
     public let idGenerator: IDGenerator
@@ -66,7 +70,7 @@ public actor Orchestrator {
         metadataIndex: MetadataIndex? = nil,
         candidateK: Int = 5,
         confidenceThreshold: Float = 0.7,
-        chunkSize: Int = 16_000,
+        chunkSize: Int = Orchestrator.defaultChunkSize,
         concurrency: Int = 2,
         onProgress: ProgressHandler? = nil,
         onUsage: UsageHandler? = nil
