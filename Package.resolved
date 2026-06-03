@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "graph-kit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dnsmalla/graph-kit.git",
+      "state" : {
+        "revision" : "1ec4949b1ee8d56c17985e9988fb3570e08a14a2",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams.git",
+      "state" : {
+        "revision" : "3d6871d5b4a5cd519adf233fbb576e0a2af71c17",
+        "version" : "5.4.0"
+      }
+    }
+  ],
+  "version" : 2
+}

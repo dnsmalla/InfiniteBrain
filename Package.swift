@@ -13,14 +13,14 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "SharedLLMKit"),
-        .package(path: "../GraphKit"),
+        .package(url: "https://github.com/dnsmalla/graph-kit.git", from: "1.0.0"),
     ],
     targets: [
         .target(
             name: "InfiniteBrainCore",
             dependencies: [
                 .product(name: "SharedLLMKit", package: "SharedLLMKit"),
-                .product(name: "GraphKit", package: "GraphKit"),
+                .product(name: "GraphKit", package: "graph-kit"),
             ],
             path: "Sources/InfiniteBrainCore",
             resources: [
