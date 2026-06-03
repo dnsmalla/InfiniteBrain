@@ -49,7 +49,14 @@ public actor QueryService {
 
     /// `topK` is honoured only in single-pass mode (legacy callers). Two-pass
     /// uses `candidateK` for retrieval and `fullNotesBudget` for expansion.
+    /// Returned when there's nothing to answer from, so the user gets a clear
+    /// signal instead of a blank LLM answer.
+    static let noContextAnswer = "No relevant notes were found in the vault for this question. Try ingesting related material first."
+
     public func ask(_ question: String, topK: Int = 6) async throws -> Answer {
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return Answer(text: "Please enter a question.", citedIds: [])
+        }
         if twoPass {
             return try await askTwoPass(question)
         } else {
@@ -62,6 +69,7 @@ public actor QueryService {
     private func askTwoPass(_ question: String) async throws -> Answer {
         let qVector = try await embeddings.embed(question)
         let hits = await index.nearest(to: qVector, k: candidateK)
+        guard !hits.isEmpty else { return Answer(text: Self.noContextAnswer, citedIds: []) }
 
         // Pass 1 input: summaries only (cheap).
         var summaries: [[String: Any]] = []
@@ -171,10 +179,13 @@ public actor QueryService {
         }
         
         // Step 4: Final Synthesis
-        // Load the full bodies for the final context pool (capped to avoid token bloat)
-        let finalNotes: [[String: Any]] = context.values.prefix(candidateK).map { [
-            "id": $0.id, "title": $0.title, "body": $0.body, "type": $0.type.rawValue
-        ]}
+        // Load the full bodies for the final context pool (capped to avoid token
+        // bloat). Sort by id first: iterating `context.values` (a Dictionary) has
+        // no stable order, so which notes survived the cap varied run-to-run.
+        let finalNotes: [[String: Any]] = context.values
+            .sorted { $0.id < $1.id }
+            .prefix(candidateK)
+            .map { ["id": $0.id, "title": $0.title, "body": $0.body, "type": $0.type.rawValue] }
         
         let answered = try await skillRunner.run(
             "answer-question",
@@ -193,6 +204,7 @@ public actor QueryService {
     private func askSinglePass(_ question: String, topK: Int) async throws -> Answer {
         let qVector = try await embeddings.embed(question)
         let hits = await index.nearest(to: qVector, k: topK)
+        guard !hits.isEmpty else { return Answer(text: Self.noContextAnswer, citedIds: []) }
 
         var loaded: [[String: Any]] = []
         for hit in hits {
