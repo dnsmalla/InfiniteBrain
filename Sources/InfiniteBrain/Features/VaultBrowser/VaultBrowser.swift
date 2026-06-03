@@ -51,7 +51,12 @@ struct VaultBrowser: View {
         .onAppear(perform: refresh)
         .onChange(of: ingest.lastResult) { _, _ in refresh() }
         .onChange(of: selectedFile) { _, new in
-            if let new { preview = (try? String(contentsOf: new, encoding: .utf8)) ?? "" }
+            guard let new else { return }
+            // Read the note off the main thread — a large note would block the UI.
+            Task.detached(priority: .userInitiated) {
+                let text = (try? String(contentsOf: new, encoding: .utf8)) ?? ""
+                await MainActor.run { if selectedFile == new { preview = text } }
+            }
         }
     }
 
@@ -245,12 +250,21 @@ struct VaultBrowser: View {
     /// and groups every found note by its NodeType.
     private func refresh() {
         guard let root = settings.vaultPath else { notesByType = []; return }
+        // Walk the notes tree off the main thread — a large vault otherwise
+        // hitches the UI on every appear/ingest/refresh.
+        Task.detached(priority: .userInitiated) {
+            let grouped = Self.scanNotes(root: root)
+            await MainActor.run { self.notesByType = grouped }
+        }
+    }
+
+    private static func scanNotes(root: URL) -> [(NodeType, [URL])] {
         let notes = root.appendingPathComponent("notes")
         let fm = FileManager.default
         var grouped: [NodeType: [URL]] = [:]
 
         guard let topLevel = try? fm.contentsOfDirectory(at: notes, includingPropertiesForKeys: [.isDirectoryKey]) else {
-            notesByType = []; return
+            return []
         }
         for dir in topLevel {
             guard (try? dir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
@@ -267,13 +281,13 @@ struct VaultBrowser: View {
                 }
             }
         }
-        notesByType = NodeType.allCases.compactMap { t in
+        return NodeType.allCases.compactMap { t in
             guard let files = grouped[t], !files.isEmpty else { return nil }
             return (t, files.sorted { $0.lastPathComponent < $1.lastPathComponent })
         }
     }
 
-    private func addMarkdownFiles(in dir: URL, to grouped: inout [NodeType: [URL]], as type: NodeType) {
+    private static func addMarkdownFiles(in dir: URL, to grouped: inout [NodeType: [URL]], as type: NodeType) {
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         let mds = files.filter { $0.pathExtension == "md" }
         if mds.isEmpty { return }
