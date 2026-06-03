@@ -11,3 +11,4 @@ DerivedData/
 *.log
 .serena/
 .claude/
+.code-notes/
