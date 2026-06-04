@@ -2,10 +2,10 @@ import SwiftUI
 import GraphKit
 import InfiniteBrainCore
 
-/// Knowledge Graph view — uses the same CGData / CodeGraphCanvas / CGSimulation
-/// infrastructure as the Code Graph so there is one shared canvas renderer.
-/// Vault notes are converted to CGData on load; the underlying notes model
-/// (Note, NodeType, VaultStore) is left unchanged.
+/// Knowledge Graph view — mirrors CodeGraphView's HSplitView layout so the two
+/// graphs feel like siblings. Left panel: canvas with toolbar + color legend.
+/// Right panel: sources index + selected-node detail (user-resizable via the
+/// native split-view divider).
 @MainActor
 struct GraphView: View {
     @EnvironmentObject var settings: AppSettings
@@ -26,28 +26,34 @@ struct GraphView: View {
     @State private var expandedSources: Set<String> = []
     @State private var hiddenSources: Set<String> = []
 
-    var body: some View {
-        ZStack(alignment: .topTrailing) {
-            // Canvas
-            if cgData.nodes.isEmpty {
-                emptyState
-            } else {
-                CodeGraphCanvas(
-                    data: cgData,
-                    selected: $selected,
-                    focusedNode: $focused,
-                    showLabels: true,
-                    onNodeOpen: nil
-                )
-            }
+    // Display controls — mirrors Code Graph's toggles.
+    @State private var showLabels: Bool = false
+    @State private var filterKind: CGNodeKind? = nil
+    @State private var graphExpanded: Bool = false
+    @State private var showDetailPanel: Bool = true
 
-            // Toolbar + sidebar overlay
-            VStack(alignment: .trailing, spacing: 12) {
-                toolbar
-                if !grouping.childrenBySource.isEmpty { sourcesPanel }
-                sidebar
+    var body: some View {
+        HSplitView {
+            canvasPanel
+                .frame(minWidth: 400, maxWidth: .infinity)
+
+            if showDetailPanel {
+                detailSidebar
+                    .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
             }
-            .padding(24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay { if graphExpanded { expandedOverlay } }
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { showDetailPanel.toggle() }
+                } label: {
+                    Image(systemName: "sidebar.right")
+                        .symbolVariant(showDetailPanel ? .fill : .none)
+                }
+                .help(showDetailPanel ? "Hide Detail Panel" : "Show Detail Panel")
+            }
         }
         .onAppear { Task { await reload() } }
         .onChange(of: ingest.lastResult) { _, _ in Task { await reload() } }
@@ -60,87 +66,192 @@ struct GraphView: View {
         }
     }
 
-    // MARK: - Empty state
+    // MARK: - Canvas Panel (left side — toolbar + graph + legend)
 
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            if loading {
-                ProgressView("Loading graph…")
-            } else {
-                Image(systemName: "circle.hexagongrid.fill")
-                    .font(.system(size: 48)).foregroundStyle(.secondary)
-                Text("No knowledge graph yet").font(.title3)
-                Text("Ingest notes to build the graph.")
-                    .font(.body).foregroundStyle(.secondary)
+    private var canvasPanel: some View {
+        VStack(spacing: 0) {
+            canvasToolbar
+            Divider()
+            ZStack {
+                Color(NSColor.windowBackgroundColor)
+                if cgData.nodes.isEmpty {
+                    emptyState
+                } else {
+                    CodeGraphCanvas(
+                        data: cgData,
+                        selected: $selected,
+                        focusedNode: $focused,
+                        showLabels: showLabels,
+                        highlightKind: filterKind,
+                        onNodeOpen: nil
+                    )
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
     }
 
-    // MARK: - Toolbar
+    private var canvasToolbar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "circle.hexagongrid.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppPalette.brand)
+                Text("Knowledge Graph").font(.callout.weight(.semibold))
 
-    private var toolbar: some View {
-        HStack(spacing: 4) {
-            Button(action: { Task { await reload() } }) {
-                Image(systemName: "arrow.clockwise")
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            .help("Reload graph")
+                if !fullData.nodes.isEmpty {
+                    Divider().frame(height: 14)
 
-            if !grouping.childrenBySource.isEmpty {
-                Divider().frame(height: 16)
-                Button { expandAll() } label: {
-                    Image(systemName: "plus.magnifyingglass").frame(width: 32, height: 32)
+                    Toggle(isOn: $showLabels) {
+                        Label("Labels", systemImage: showLabels ? "text.bubble.fill" : "text.bubble")
+                            .font(.caption)
+                    }
+                    .toggleStyle(.switch).controlSize(.small)
+
+                    Divider().frame(height: 14)
+
+                    Text("\(cgData.nodes.count) / \(fullData.nodes.count) nodes")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain).help("Expand all sources")
-                Button { collapseAll() } label: {
-                    Image(systemName: "minus.magnifyingglass").frame(width: 32, height: 32)
+
+                Spacer()
+
+                if !grouping.childrenBySource.isEmpty {
+                    Button { expandAll() } label: {
+                        Image(systemName: "rectangle.expand.vertical")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help("Expand all sources")
+
+                    Button { collapseAll() } label: {
+                        Image(systemName: "rectangle.compress.vertical")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help("Collapse all sources")
                 }
-                .buttonStyle(.plain).help("Collapse all sources")
+
+                Button { Task { await reload() } } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .help("Reload graph")
+
+                if !cgData.nodes.isEmpty {
+                    Button { graphExpanded = true } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help("Expand graph to full window")
+                }
             }
+            .padding(.horizontal, 16).padding(.vertical, 8)
 
-            Divider().frame(height: 16)
-
-            Text("\(cgData.nodes.count) / \(fullData.nodes.count) Nodes")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .padding(.horizontal, 8)
+            // Color legend — clickable kind filters
+            if !cgData.nodes.isEmpty {
+                Divider()
+                colorLegend
+                    .padding(.horizontal, 16).padding(.vertical, 6)
+            }
         }
-        .padding(.horizontal, 8).padding(.vertical, 4)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(AppPalette.border, lineWidth: 1))
+        .background(Color(NSColor.controlBackgroundColor))
     }
 
-    // MARK: - Sources panel (index / level control)
+    /// Clickable filter legend — tap a kind to highlight; tap again to clear.
+    private var colorLegend: some View {
+        let presentKinds = Array(Set(fullData.nodes.map(\.kind)))
+            .sorted { $0.rawValue < $1.rawValue }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(presentKinds, id: \.self) { kind in
+                    let isActive = filterKind == kind
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            filterKind = isActive ? nil : kind
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(CGPalette.color(for: kind))
+                                .frame(width: 8, height: 8)
+                            Text(kind.displayName)
+                                .font(.system(size: 10, weight: isActive ? .semibold : .regular))
+                                .foregroundStyle(isActive ? Color.primary : Color.secondary)
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(isActive
+                                      ? CGPalette.color(for: kind).opacity(0.15)
+                                      : Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .strokeBorder(isActive
+                                              ? CGPalette.color(for: kind).opacity(0.4)
+                                              : Color.clear, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help(isActive ? "Showing only \(kind.displayName) — click to clear" : "Show only \(kind.displayName)")
+                }
+            }
+        }
+        .frame(height: 22)
+    }
 
-    private var sourcesPanel: some View {
+    // MARK: - Detail Sidebar (right side — sources + node detail)
+
+    private var detailSidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Sources section
+            if !grouping.childrenBySource.isEmpty {
+                sourcesSection
+                Divider()
+            }
+
+            // Selected node detail (only when a node is clicked)
+            if let s = selected,
+               let note = notes.first(where: { $0.id == s.id }) {
+                nodeDetail(note: note)
+            } else {
+                Spacer()
+            }
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - Sources section
+
+    private var sourcesSection: some View {
         let sources = notes.filter { $0.type == .source }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Sources")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                Text("SOURCES")
+                    .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Text("\(sources.count)")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 16).padding(.vertical, 8)
             Divider()
+
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(sources, id: \.id) { src in
                         sourceRow(src)
                     }
                 }
+                .padding(.horizontal, 12).padding(.vertical, 6)
             }
-            .frame(maxHeight: 240)
+            .frame(maxHeight: 200)
         }
-        .padding(16)
-        .frame(width: 260)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppPalette.border, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -175,76 +286,111 @@ struct GraphView: View {
             .buttonStyle(.plain)
             .help(isHidden ? "Show source" : "Hide source")
         }
+        .padding(.vertical, 3).padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isExpanded ? AppPalette.brand.opacity(0.06) : Color.clear)
+        )
     }
 
-    // MARK: - Sidebar
+    // MARK: - Node detail section
 
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if let s = selected,
-               let note = notes.first(where: { $0.id == s.id }) {
-                // Selected node info
+    @ViewBuilder
+    private func nodeDetail(note: Note) -> some View {
+        let nodeColor = CGPalette.color(for: CGNodeKind.from(note.type.rawValue))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Circle().fill(nodeColor).frame(width: 10, height: 10)
                 Text(note.title)
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(.primary)
-                Text(note.summary)
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 8)
+                    .font(.title3).lineLimit(2)
+                Spacer()
+            }
+            Text(note.type.rawValue.capitalized.uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(nodeColor)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Capsule().fill(nodeColor.opacity(0.15)))
 
-                if !currentBacklinks.isEmpty {
-                    Divider()
-                    Text("Backlinks")
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(.tertiary)
-                        .textCase(.uppercase)
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(currentBacklinks) { link in
-                                Button {
-                                    selected = cgData.nodes.first { $0.id == link.id }
-                                } label: {
-                                    HStack {
-                                        Circle()
-                                            .fill(CGPalette.color(for: CGNodeKind.from(link.type.rawValue)))
-                                            .frame(width: 8, height: 8)
-                                        Text(link.title).font(.caption).lineLimit(2)
-                                    }
+            Text(note.summary)
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(.secondary)
+
+            if !currentBacklinks.isEmpty {
+                Divider()
+                Text("BACKLINKS")
+                    .font(.caption).foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(currentBacklinks) { link in
+                            Button {
+                                selected = cgData.nodes.first { $0.id == link.id }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(CGPalette.color(for: CGNodeKind.from(link.type.rawValue)))
+                                        .frame(width: 7, height: 7)
+                                    Text(link.title)
+                                        .font(.caption).lineLimit(2)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
                                 }
-                                .buttonStyle(.plain)
+                                .padding(.vertical, 2)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                }
-            } else {
-                // Legend
-                Text("Knowledge Graph")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                Divider()
-                ForEach(CGNodeKind.knowledgeGraphKinds, id: \.self) { kind in
-                    HStack {
-                        Circle()
-                            .fill(CGPalette.color(for: kind))
-                            .frame(width: 10, height: 10)
-                            .shadow(color: CGPalette.color(for: kind).opacity(0.6), radius: 3)
-                        Text(kind.displayName)
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 1)
                 }
             }
             Spacer()
         }
-        .padding(20)
-        .frame(width: 260)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppPalette.border, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    // MARK: - Expanded overlay
+
+    private var expandedOverlay: some View {
+        ZStack(alignment: .topTrailing) {
+            Color(NSColor.windowBackgroundColor).ignoresSafeArea()
+            CodeGraphCanvas(
+                data: cgData,
+                selected: $selected,
+                focusedNode: $focused,
+                showLabels: showLabels,
+                highlightKind: filterKind,
+                onNodeOpen: nil
+            )
+            Button { graphExpanded = false } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 22))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.escape, modifiers: [])
+            .help("Close (Esc)")
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.2), value: graphExpanded)
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            if loading {
+                ProgressView("Loading graph…")
+            } else {
+                Image(systemName: "circle.hexagongrid.fill")
+                    .font(.system(size: 48)).foregroundStyle(.secondary)
+                Text("No knowledge graph yet").font(.title3)
+                Text("Ingest notes to build the graph.")
+                    .font(.body).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Data loading
@@ -290,17 +436,30 @@ struct GraphView: View {
         let topIds = Set(grouping.topLevelIds)
         let topNodes = nodes.filter { topIds.contains($0.id) }
         let topEdges = edges.filter { topIds.contains($0.fromId) && topIds.contains($0.toId) }
+        let canvasSize = CGSize(width: 1200, height: 900)
         let topInitial = CodeGraphLayout.compute(CGData(nodes: topNodes, edges: topEdges),
-                                                 canvasSize: CGSize(width: 1200, height: 900))
+                                                 canvasSize: canvasSize)
         let settledTop = await Task.detached(priority: .userInitiated) {
             let sim = CGSimulation(data: topInitial)
             sim.settle(maxIterations: 200)
             return sim.appliedData(to: topInitial)
         }.value
-        self.sourcePositions = Dictionary(uniqueKeysWithValues: settledTop.nodes.map { ($0.id, $0.position) })
 
-        // Default: everything collapsed (clean index).
-        self.expandedSources = []
+        // Centre-normalise: shift all positions so the bounding box is centred
+        // at (600, 450). This keeps the auto-fit in CodeGraphCanvas reliable
+        // regardless of where the simulation drifted to.
+        let xs = settledTop.nodes.map(\.position.x)
+        let ys = settledTop.nodes.map(\.position.y)
+        let cx = ((xs.min() ?? 0) + (xs.max() ?? 0)) / 2
+        let cy = ((ys.min() ?? 0) + (ys.max() ?? 0)) / 2
+        let dx = canvasSize.width  / 2 - cx
+        let dy = canvasSize.height / 2 - cy
+        self.sourcePositions = Dictionary(uniqueKeysWithValues: settledTop.nodes.map {
+            ($0.id, CGPoint(x: $0.position.x + dx, y: $0.position.y + dy))
+        })
+
+        // Default: all sources expanded so every note is visible.
+        self.expandedSources = Set(grouping.childrenBySource.keys)
         self.hiddenSources = []
         recomputeDisplay()
         try? await newStore.saveMetadata()
