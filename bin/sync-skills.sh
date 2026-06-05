@@ -7,7 +7,7 @@
 #
 # Central repo is located via, in order:
 #   1. $SKILLS_REPO (path to a checkout)
-#   2. ~/Desktop/skills
+#   2. ~/skills  (canonical clone; then ~/Desktop/skills for back-compat)
 #   3. a cached clone of https://github.com/dnsmalla/skills.git
 #
 # Usage:  bin/sync-skills.sh
@@ -19,6 +19,8 @@ TARGET="$PWD/Sources/InfiniteBrainCore/Resources/skills"
 central=""
 if [ -n "${SKILLS_REPO:-}" ] && [ -d "$SKILLS_REPO/runtime" ]; then
     central="$SKILLS_REPO"
+elif [ -d "$HOME/skills/runtime" ]; then
+    central="$HOME/skills"
 elif [ -d "$HOME/Desktop/skills/runtime" ]; then
     central="$HOME/Desktop/skills"
 else
