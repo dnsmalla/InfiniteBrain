@@ -38,6 +38,9 @@ public enum CGPalette {
         case .topic:          return Color(red: 0.2, green: 0.4, blue: 0.8)
         case .claim:          return Color(red: 0.9, green: 0.4, blue: 0.2)
         case .other:          return .gray
+        // Future-proof: GraphKit may add node kinds (e.g. skill, agent) in a minor
+        // release; render any unknown kind neutrally rather than failing to compile.
+        @unknown default:     return .gray
         }
     }
 }
