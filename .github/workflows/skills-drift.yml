@@ -1,0 +1,28 @@
+name: skills-drift
+
+# Fail if the bundled runtime skills (Sources/InfiniteBrainCore/Resources/skills)
+# have drifted from the central dnsmalla/skills repo at the commit pinned in
+# .skills-lock. Catches hand-edits to the synced copies — author skills in
+# central, then run `bin/sync-skills.sh` and commit.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Re-sync from central @ .skills-lock and check for drift
+        run: |
+          set -euo pipefail
+          ref="$(cat .skills-lock 2>/dev/null || echo main)"
+          git clone --quiet https://github.com/dnsmalla/skills.git "$RUNNER_TEMP/central"
+          git -C "$RUNNER_TEMP/central" checkout --quiet "$ref"
+          SKILLS_REPO="$RUNNER_TEMP/central" bin/sync-skills.sh
+          if ! git diff --exit-code -- Sources/InfiniteBrainCore/Resources/skills; then
+            echo "::error::Bundled runtime skills differ from central@${ref}. Run 'bin/sync-skills.sh' and commit the result."
+            exit 1
+          fi
+          echo "✓ bundled runtime skills match central@${ref}"
