@@ -1,0 +1,56 @@
+name: Release
+
+# Tag-driven release: push a `v*` tag (e.g. `v0.27.0`) and this workflow
+# verifies VERSION matches, runs the test suite, builds an (ad-hoc signed)
+# DMG, and attaches it to a GitHub Release. Distribution-grade signing /
+# notarisation still requires a Developer ID — run bin/build_app.sh --sign
+# locally for that (see README).
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Test, build DMG, publish release
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify VERSION matches the tag
+        run: |
+          ver=$(cat VERSION)
+          if [ "v$ver" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::VERSION file ($ver) != tag (${GITHUB_REF_NAME})"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build app + DMG (ad-hoc signed)
+        run: bash bin/build_app.sh --dmg
+
+      - name: Extract this version's CHANGELOG section
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v ver="$ver" '
+            $0 ~ "^## \\[" ver "\\]" {flag=1; next}
+            /^## \[/ {flag=0}
+            flag' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
+
+      - name: Create GitHub Release with DMG
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "InfiniteBrain ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            ".build/dist/InfiniteBrain-${ver}.dmg"
