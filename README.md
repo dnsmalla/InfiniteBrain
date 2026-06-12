@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/ci.yml/badge.svg)](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/ci.yml)
 [![Skills drift](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/skills-drift.yml/badge.svg)](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/skills-drift.yml)
-![Version](https://img.shields.io/badge/version-0.26.0-blue)
+[![Release](https://img.shields.io/github/v/release/dnsmalla/InfiniteBrain?display_name=tag&color=blue)](https://github.com/dnsmalla/InfiniteBrain/releases)
 ![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)
 
 **Drop a PDF in. Get a smart, searchable knowledge base out.**
