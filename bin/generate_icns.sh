@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-LOGO_PATH="/Users/dinsmallade/InfiniteBrain/app_logo.png"
+# Resolve the repo root relative to this script so the path works on any machine.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOGO_PATH="${REPO_ROOT}/app_logo.png"
 ICONSET_DIR="AppIcon.iconset"
 OUTPUT_ICNS="AppIcon.icns"
 

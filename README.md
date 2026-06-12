@@ -1,5 +1,10 @@
 # InfiniteBrain
 
+[![CI](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/ci.yml/badge.svg)](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/ci.yml)
+[![Skills drift](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/skills-drift.yml/badge.svg)](https://github.com/dnsmalla/InfiniteBrain/actions/workflows/skills-drift.yml)
+![Version](https://img.shields.io/badge/version-0.26.0-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-lightgrey)
+
 **Drop a PDF in. Get a smart, searchable knowledge base out.**
 
 InfiniteBrain is a macOS app that reads your documents and turns them into a
